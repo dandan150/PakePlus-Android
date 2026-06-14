@@ -1,1786 +1,1291 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>杨氏模量实验 3D 交互教学演示</title>
+    <title>量子隧穿与扫描隧道显微镜（STM）虚拟实验室</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX CSS and JS for professional physics formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <!-- 移除了 onload 属性以避免 document.body 尚未就绪时报错 -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        lab: {
+                            bg: '#090d16',
+                            panel: '#111827',
+                            border: '#1f2937',
+                            accent: '#10b981',
+                            accentGlow: '#059669',
+                            laser: '#06b6d4',
+                            warning: '#f59e0b',
+                            danger: '#f43f5e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #f4f7f6; color: #333; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
-        /* ===== 左侧控制面板 ===== */
-        #ui {
-            position: absolute; top: 20px; left: 20px;
-            background: rgba(255,255,255,0.92);
-            padding: 22px 25px 18px;
-            border-radius: 14px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.10);
-            border: 1px solid #e8e8e8;
-            backdrop-filter: blur(6px);
-            z-index: 10;
-            width: 240px;
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #05070c;
         }
-        #ui h3 {
-            margin: 0 0 14px 0;
-            color: #1a2744;
-            font-size: 1.15rem;
-            letter-spacing: 0.3px;
+        .code-font {
+            font-family: 'Fira Code', monospace;
         }
-        #ui h3 small {
-            font-weight: normal; font-size: 0.8rem; color: #7f8c9b;
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
         }
-        #ui label {
-            font-size: 14px; font-weight: 500; display: block; margin-bottom: 6px;
+        ::-webkit-scrollbar-track {
+            background: #090d16;
         }
-        #ui label span {
-            font-weight: 700; color: #2563eb; font-size: 17px;
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 3px;
         }
-        #ui input[type=range] {
-            width: 100%; cursor: pointer; accent-color: #2563eb;
-            height: 6px; margin-bottom: 4px;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
         }
-        #ui .hint {
-            font-size: 12.5px; color: #7a7f8a; margin-top: 12px; line-height: 1.7;
+        .glow-green {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
         }
-        #ui .btn-row {
-            display: flex; gap: 8px; margin-top: 12px;
+        .glow-red {
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+            animation: pulse-danger 1s infinite alternate;
         }
-        #ui .btn-row button {
-            flex: 1; padding: 8px 0; border: none; border-radius: 8px;
-            font-size: 13px; font-weight: 600; cursor: pointer;
-            transition: all 0.2s; background: #eef1f6; color: #3b4a5a;
+        @keyframes pulse-danger {
+            0% { box-shadow: 0 0 10px rgba(244, 63, 94, 0.3); }
+            100% { box-shadow: 0 0 25px rgba(244, 63, 94, 0.7); }
         }
-        #ui .btn-row button:hover { background: #e2e6ed; }
-        #ui .btn-row button.active {
-            background: #2563eb; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.3);
-        }
-        #ui .btn-row button.active:hover { background: #1d4ed8; }
-
-        /* ===== 右侧数据面板 ===== */
-        #dataPanel {
-            position: absolute; top: 20px; right: 20px;
-            background: rgba(255,255,255,0.92);
-            padding: 16px 20px; border-radius: 14px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.10);
-            border: 1px solid #e8e8e8;
-            backdrop-filter: blur(6px);
-            font-family: 'Courier New', Consolas, monospace;
-            font-size: 13.5px;
-            min-width: 230px;
-            z-index: 10;
-            line-height: 1.8;
-        }
-        #dataPanel .title {
-            font-family: 'Segoe UI', sans-serif;
-            font-weight: 700; font-size: 15px; color: #1a2744;
-            margin-bottom: 10px; padding-bottom: 8px;
-            border-bottom: 2px solid #eef1f6;
-            display: flex; align-items: center; gap: 6px;
-        }
-        #dataPanel .row {
-            display: flex; justify-content: space-between;
-        }
-        #dataPanel .row .val {
-            color: #2563eb; font-weight: 600;
-        }
-        #dataPanel .row .label {
-            color: #5f6b7a;
-        }
-        #dataPanel .divider {
-            border-top: 1px dashed #dce0e8; margin: 6px 0;
-        }
-        #dataPanel .result-row {
-            display: flex; justify-content: space-between;
-            font-weight: 700; color: #b91c1c; font-size: 14px;
-        }
-
-        /* ===== 底部操作提示 ===== */
-        #instructions {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.55); color: #fff;
-            padding: 10px 22px; border-radius: 30px;
-            font-size: 13px; letter-spacing: 0.3px;
-            backdrop-filter: blur(4px); z-index: 10;
-            white-space: nowrap; user-select: none;
-        }
-        #instructions span { margin: 0 8px; opacity: 0.6; }
-
-        /* 自动演示时按钮状态 */
-        .demo-running #demoBtn { background: #dc2626; color: #fff; }
-        .demo-running #demoBtn:hover { background: #b91c1c; }
-
-        /* ===== 响应式适配 ===== */
-        @media (max-width: 800px) {
-            #dataPanel { top: auto; bottom: 80px; right: 10px; font-size: 12px; min-width: 160px; padding: 12px 14px; }
-            #ui { width: 180px; padding: 16px; }
-            #ui h3 { font-size: 1rem; }
-            #instructions { font-size: 11px; padding: 6px 14px; }
-        }
-
-        /* CSS2D 标签样式 */
-        .label-3d {
-            color: #1a2744; font-size: 13px; font-weight: 600;
-            text-shadow: 0 1px 4px rgba(255,255,255,0.9), 0 0 8px rgba(255,255,255,0.6);
-            background: rgba(255,255,255,0.75);
-            padding: 2px 10px; border-radius: 12px;
-            border: 1px solid rgba(200,200,200,0.4);
-            backdrop-filter: blur(2px);
-            pointer-events: none; user-select: none;
-            white-space: nowrap;
-        }
-        .label-3d-sm {
-            font-size: 11px; padding: 1px 6px; opacity: 0.85;
-        }
-        .label-3d-scale {
-            color: #111; font-size: 12px; font-weight: 700;
-            text-shadow: 0 0 6px rgba(255,255,255,0.9);
-            pointer-events: none; user-select: none;
-        }
-
-        /* ===== 数据处理面板（按实验要求文档） ===== */
-        #procOpenBtn {
-            position: absolute; top: 20px; left: 290px;
-            z-index: 11;
-            padding: 10px 16px; border: none; border-radius: 10px;
-            font-size: 13px; font-weight: 600; cursor: pointer;
-            background: #1a2744; color: #fff;
-            box-shadow: 0 4px 14px rgba(26,39,68,0.25);
-        }
-        #procOpenBtn:hover { background: #2d3f5c; }
-        @media (max-width: 800px) {
-            #procOpenBtn { left: 12px; top: auto; bottom: 52px; font-size: 12px; padding: 8px 12px; }
-        }
-        #procOverlay {
-            display: none; position: fixed; inset: 0; z-index: 100;
-            background: rgba(26,39,68,0.45); backdrop-filter: blur(3px);
-            align-items: center; justify-content: center; padding: 16px;
-        }
-        #procOverlay.open { display: flex; }
-        #procPanel {
-            background: #fafbfd; color: #1a2744;
-            max-width: 980px; width: 100%; max-height: 92vh; overflow: auto;
-            border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            font-size: 13px;
-        }
-        #procPanel header {
-            position: sticky; top: 0; z-index: 2;
-            background: linear-gradient(135deg, #1a2744, #2d4a7c);
-            color: #fff; padding: 16px 22px; border-radius: 16px 16px 0 0;
-            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
-        }
-        #procPanel header h2 { margin: 0; font-size: 1.15rem; font-weight: 700; }
-        #procPanel .proc-body { padding: 18px 22px 24px; }
-        #procPanel h4 {
-            margin: 18px 0 10px; font-size: 0.95rem; color: #1a2744;
-            border-left: 4px solid #2563eb; padding-left: 10px;
-        }
-        #procPanel .grid-3 {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-        }
-        @media (max-width: 700px) { #procPanel .grid-3 { grid-template-columns: 1fr; } }
-        #procPanel label.small { font-size: 12px; color: #5f6b7a; display: block; margin-bottom: 4px; }
-        #procPanel input[type="text"], #procPanel input[type="number"] {
-            width: 100%; padding: 8px 10px; border: 1px solid #cfd6e4; border-radius: 8px;
-            font-size: 13px; box-sizing: border-box;
-        }
-        #procPanel .proc-actions {
-            display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
-        }
-        #procPanel .proc-actions button {
-            padding: 9px 16px; border: none; border-radius: 8px; font-weight: 600;
-            font-size: 13px; cursor: pointer; background: #2563eb; color: #fff;
-        }
-        #procPanel .proc-actions button.secondary { background: #eef1f6; color: #1a2744; }
-        #procPanel .proc-actions button.danger { background: #dc2626; }
-        #procTableWrap { overflow-x: auto; margin-top: 8px; border: 1px solid #e2e6ed; border-radius: 10px; }
-        #procReadings {
-            width: 100%; border-collapse: collapse; font-size: 12.5px;
-            font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-        }
-        #procReadings th, #procReadings td { border: 1px solid #e2e6ed; padding: 6px 8px; text-align: right; }
-        #procReadings th { background: #eef2f8; color: #3b4a5a; text-align: center; }
-        #procReadings td:first-child { text-align: center; background: #f8fafc; }
-        #procReadings input { width: 100%; border: none; background: transparent; text-align: right; font: inherit; padding: 4px; }
-        #procResult {
-            margin-top: 16px; padding: 14px 16px; background: #fff;
-            border: 1px solid #e2e6ed; border-radius: 10px; white-space: pre-wrap;
-            font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; line-height: 1.65;
-            color: #111827;
-        }
-        #procResult .final-line { font-size: 1.05rem; font-weight: 700; color: #b91c1c; margin-top: 10px; }
-        #procResult .final-math { font-family: ui-monospace, Consolas, monospace; font-size: 1.08rem; font-weight: 700; color: #b91c1c; margin-top: 12px; }
-        #procResult .final-math .b { font-weight: 800; }
-        #procHint { font-size: 12px; color: #64748b; margin-top: 8px; }
-        #procPanel details { margin-top: 14px; padding: 10px 12px; background: #f1f5f9; border-radius: 8px; }
-        #procPanel details summary { cursor: pointer; font-weight: 600; color: #334155; }
     </style>
 </head>
-<body>
-    <!-- ===== 左侧控制面板 ===== -->
-    <div id="ui">
-        <h3>🔬 杨氏模量 <small>3D 教学演示</small></h3>
-        <label>挂载砝码: <span id="weightCount">0</span> 个 (共 9 个，1 kg/个)</label>
-        <input type="range" id="weightSlider" min="0" max="9" step="1" value="0">
-        <div class="hint">
-            ⚡ 拖动滑块增减砝码<br>
-            观察金属丝伸长 & 光斑移动
+<body class="text-slate-100 min-h-screen flex flex-col antialiased">
+
+    <!-- 顶部导航栏 -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50 flex flex-wrap justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center shadow-lg">
+                <svg class="w-6 h-6 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                    扫描隧道显微镜（STM）虚拟实验室
+                    <span class="text-xs bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold">Quantum 2.0</span>
+                </h1>
+                <p class="text-xs text-slate-400">基于量子隧穿效应与纳米级压电驱动的交互式动态仿真系统</p>
+            </div>
         </div>
-        <div class="btn-row">
-            <button id="demoBtn">▶ 自动演示</button>
-            <button id="resetViewBtn">⟲ 复位视角</button>
+        <div class="flex items-center space-x-4 mt-2 sm:mt-0">
+            <span class="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-full border border-slate-800">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                物理引擎：薛定谔波动方程解析求解
+            </span>
         </div>
-    </div>
-    <button type="button" id="procOpenBtn">📐 数据处理</button>
+    </header>
 
-    <!-- ===== 右侧数据面板 ===== -->
-    <div id="dataPanel">
-        <div class="title">📊 实时测量数据</div>
-        <div class="row"><span class="label">砝码总质量</span><span class="val" id="dMass">0.00 kg</span></div>
-        <div class="row"><span class="label">金属丝伸长 ΔL</span><span class="val" id="dDeltaL">0.000 mm</span></div>
-        <div class="row"><span class="label">光杠杆转角 θ</span><span class="val" id="dTheta">0.000 mrad</span></div>
-        <div class="row"><span class="label">标尺读数变化 Δn</span><span class="val" id="dDeltaN">0.00 cm</span></div>
-        <div class="divider"></div>
-        <div class="row"><span class="label">金属丝原长 L</span><span class="val">1.000 m</span></div>
-        <div class="row"><span class="label">镜-尺距离 D</span><span class="val">2.000 m</span></div>
-        <div class="row"><span class="label">金属丝直径 d</span><span class="val">0.950 mm</span></div>
-        <div class="row"><span class="label">光杆杆常数 b</span><span class="val">75.0 mm</span></div>
-        <div class="divider"></div>
-        <div class="result-row">
-            <span>杨氏模量 E</span>
-            <span id="dE">—</span>
-        </div>
-    </div>
+    <!-- 主实验舱主体 -->
+    <main class="flex-grow p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto w-full">
+        
+        <!-- 左侧控制面板 (4 Cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- 模块 1: 工作模式选择 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <h2 class="text-sm font-semibold tracking-wider uppercase text-slate-400 mb-4 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                    1. 扫描工作模式选择
+                </h2>
+                
+                <div class="grid grid-cols-1 gap-2.5">
+                    <!-- 恒定电流模式 -->
+                    <button id="mode-cc" class="mode-btn relative text-left p-3.5 rounded-lg border-2 transition-all duration-200 bg-slate-950 border-emerald-500/50 hover:border-emerald-500 text-slate-200">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-sm">恒定电流模式 (Constant Current)</span>
+                            <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center">
+                                <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">利用PID反馈调节探针高度，维持电流不变。探针移动轨迹直接反应表面形貌。</p>
+                    </button>
+                    
+                    <!-- 恒定高度模式 -->
+                    <button id="mode-ch" class="mode-btn relative text-left p-3.5 rounded-lg border border-slate-800 transition-all duration-200 bg-slate-950/40 hover:bg-slate-950 hover:border-slate-700 text-slate-400">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-sm">恒定高度模式 (Constant Height)</span>
+                            <span class="w-3.5 h-3.5 rounded-full border border-slate-700"></span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">探针绝对高度锁死。高速扫描表面，通过记录隧穿电流在不同位点的剧烈涨落来还原形貌。</p>
+                    </button>
 
-    <!-- ===== 底部提示 ===== -->
-    <div id="instructions">
-        🖱 左键旋转 <span>|</span> 滚轮缩放 <span>|</span> 右键平移
-    </div>
-
-    <!-- ===== 杨氏模量数据处理（文档：表2-9-1～3、公式与不确定度） ===== -->
-    <div id="procOverlay" aria-hidden="true">
-        <div id="procPanel">
-            <header>
-                <h2>拉伸法测金属丝的杨氏模量 — 数据处理</h2>
-                <button type="button" class="secondary" id="procCloseBtn" style="background:rgba(255,255,255,0.15);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600;">关闭</button>
-            </header>
-            <div class="proc-body">
-                <details>
-                    <summary>使用说明</summary>
-                    <p style="margin:8px 0 0;line-height:1.7;">
-                        杨氏模量公式 <strong>E = 8FLD / (π d² b Δn̄)</strong>，其中 <strong>F 固定取 9.8 N</strong>（单块 1 kg 砝码对应拉力）。L、D、b 各填三次测量，单位均为 <strong>mm</strong>（保留 1 位小数）；d 为多次直径测量，<strong>mm</strong>（3 位小数）；标尺读数 n<sub>增</sub>、n<sub>减</sub> 及导出 Δn̄ 均为 <strong>cm</strong>（2 位小数）。
-                        相对误差按 <strong>E<sub>r</sub> = ΔL̄/L̄ + Δb̄/b̄ + 2Δd̄/d̄ + Δ(Δn̄)/Δn̄ + ΔD̄/D̄</strong> 计算；<strong>E<sub>r</sub> 最终结果取 1 位有效数字且只进不舍</strong>（如 0.023→0.03，0.14→0.2），再得 <strong>ΔE = E<sub>r</sub>·Ē</strong>，并输出 <strong>E = Ē ± ΔE</strong>（Pa，位数对齐）。
-                        表格填写后<strong>实时</strong>计算 n̄、Δn、E<sub>i</sub> 与最终结果；亦可点「计算」刷新全文报告。格拉布斯/3σ 剔除可选。数据自动保存在本机浏览器。
-                    </p>
-                </details>
-
-                <h4>一、几何量（各 3 次，mm，1 位小数）</h4>
-                <div class="grid-3">
-                    <div><label class="small">L₁、L₂、L₃（mm）</label><input type="text" id="pL123" value="1000.1,1000.0,999.9"></div>
-                    <div><label class="small">D₁、D₂、D₃（mm）</label><input type="text" id="pD123" value="2000.1,2000.0,1999.9"></div>
-                    <div><label class="small">b₁、b₂、b₃（mm）</label><input type="text" id="pb123" value="75.1,75.0,74.9"></div>
+                    <!-- 手动操控模式 -->
+                    <button id="mode-manual" class="mode-btn relative text-left p-3.5 rounded-lg border border-slate-800 transition-all duration-200 bg-slate-950/40 hover:bg-slate-950 hover:border-slate-700 text-slate-400">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-sm">手动操控体验 (Manual Probe Control)</span>
+                            <span class="w-3.5 h-3.5 rounded-full border border-slate-700"></span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">关闭反馈系统。允许用户鼠标拖拽探针逼近样品表面，亲身体验指数级电流激增与致命碰撞风险。</p>
+                    </button>
                 </div>
+            </div>
 
-                <h4>二、金属丝直径 d（多次测量，mm，3 位小数）</h4>
-                <input type="text" id="pdList" style="max-width:100%;" value="0.951,0.950,0.949,0.950,0.951,0.950">
+            <!-- 模块 2: 样品形貌选择 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <h2 class="text-sm font-semibold tracking-wider uppercase text-slate-400 mb-4 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                    2. 物理观测样品
+                </h2>
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="sample-graphite" class="sample-btn py-2.5 px-2 rounded-lg border border-emerald-500/40 text-emerald-400 bg-emerald-950/20 text-xs font-semibold text-center transition-all">
+                        高定向石墨晶格
+                    </button>
+                    <button id="sample-step" class="sample-btn py-2.5 px-2 rounded-lg border border-slate-800 text-slate-400 bg-slate-950/50 text-xs text-center transition-all hover:border-slate-700 hover:text-slate-300">
+                        原子台阶缺陷
+                    </button>
+                    <button id="sample-adatom" class="sample-btn py-2.5 px-2 rounded-lg border border-slate-800 text-slate-400 bg-slate-950/50 text-xs text-center transition-all hover:border-slate-700 hover:text-slate-300">
+                        孤立吸附原子
+                    </button>
+                </div>
+            </div>
 
-                <h4>三、B 类不确定度（仪器分度，矩形分布 u = Δ/√3）</h4>
-                <div class="grid-3">
-                    <div><label class="small">ΔL（mm）</label><input type="number" id="pDL" step="any" value="2.0"></div>
-                    <div><label class="small">ΔD（mm）</label><input type="number" id="pDD" step="any" value="2.0"></div>
-                    <div><label class="small">Δb（mm）</label><input type="number" id="pDb" step="any" value="0.1"></div>
-                    <div><label class="small">Δd（mm）</label><input type="number" id="pDd" step="any" value="0.004"></div>
-                    <div><label class="small">Δn 单次读数（cm）</label><input type="number" id="pDn" step="any" value="0.05"></div>
-                </div>
+            <!-- 模块 3: 仪表盘核心参数控制器 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-grow flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold tracking-wider uppercase text-slate-400 mb-4 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        3. 纳米物理参数精调
+                    </h2>
 
-                <h4>四、砝码与标尺读数</h4>
-                <div class="proc-actions" style="margin-top:0;">
-                    <button type="button" class="secondary" id="procAddRow">+ 添加一行</button>
-                    <button type="button" class="secondary" id="procDelRow">− 删除末行</button>
-                </div>
-                <div id="procTableWrap">
-                    <table id="procReadings">
-                        <thead>
-                            <tr>
-                                <th>次数</th>
-                                <th>m (kg)</th>
-                                <th>n<sub>增</sub> (cm)</th>
-                                <th>n<sub>减</sub> (cm)</th>
-                                <th>n̄ (cm)</th>
-                                <th>Δn (cm)</th>
-                                <th>E<sub>i</sub> (Pa)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="procReadBody"></tbody>
-                    </table>
-                </div>
-                <div class="grid-3" style="margin-top:12px;">
-                    <div>
-                        <label class="small">粗大误差判据</label>
-                        <select id="pOutRule" style="width:100%;padding:8px;border-radius:8px;border:1px solid #cfd6e4;">
-                            <option value="grubbs">格拉布斯 (α=0.05)</option>
-                            <option value="3sigma">3σ</option>
-                        </select>
+                    <!-- 参数1: 偏置电压 -->
+                    <div class="mb-4">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">偏置电压 (Bias Voltage, \(V\))</span>
+                            <span class="text-cyan-400 font-semibold code-font" id="val-voltage">1.50 V</span>
+                        </div>
+                        <input type="range" id="param-voltage" min="0.1" max="3.0" step="0.05" value="1.50" 
+                            class="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    </div>
+
+                    <!-- 参数2: 目标设定隧道电流 -->
+                    <div class="mb-4" id="container-setpoint">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">目标恒定电流 (Setpoint Current, \(I_{set}\))</span>
+                            <span class="text-emerald-400 font-semibold code-font" id="val-current-set">2.00 nA</span>
+                        </div>
+                        <input type="range" id="param-current-set" min="0.2" max="5.0" step="0.1" value="2.00" 
+                            class="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                    </div>
+
+                    <!-- 参数3: 反馈环路增益 (Kp) -->
+                    <div class="mb-4" id="container-feedback">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">压电反馈响应速度 (Feedback Speed, \(K_p\))</span>
+                            <span class="text-warning font-semibold code-font" id="val-kp">0.15</span>
+                        </div>
+                        <input type="range" id="param-kp" min="0.02" max="0.5" step="0.01" value="0.15" 
+                            class="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-warning">
+                    </div>
+
+                    <!-- 参数4: 样品表面势垒功函数 -->
+                    <div class="mb-4">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">电子功函数 (Work Function, \(\Phi\))</span>
+                            <span class="text-purple-400 font-semibold code-font" id="val-phi">4.50 eV</span>
+                        </div>
+                        <input type="range" id="param-phi" min="2.0" max="6.0" step="0.1" value="4.50" 
+                            class="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                    </div>
+
+                    <!-- 参数5: 扫描速度 -->
+                    <div class="mb-4" id="container-speed">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">水平扫描速度 (Scan Speed)</span>
+                            <span class="text-slate-200 font-semibold code-font" id="val-speed">1.50 Å/s</span>
+                        </div>
+                        <input type="range" id="param-speed" min="0.5" max="4.0" step="0.1" value="1.50" 
+                            class="w-full h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-slate-400">
                     </div>
                 </div>
 
-                <div class="proc-actions">
-                    <button type="button" id="procCalc">计算</button>
-                    <button type="button" class="secondary" id="procFillDemo">用 3D 演示默认参数填充</button>
-                    <button type="button" class="secondary" id="procExportCsv">导出 CSV</button>
-                    <button type="button" class="secondary" id="procExportTxt">导出 TXT</button>
+                <!-- 仿真控制按钮组 -->
+                <div class="flex gap-3 pt-4 border-t border-slate-800">
+                    <button id="btn-play" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-md transition-all duration-150 flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <span>暂停扫描</span>
+                    </button>
+                    <button id="btn-reset" class="py-3 px-4 rounded-lg font-bold text-sm bg-slate-800 hover:bg-slate-700 text-white transition-all duration-150 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" /></svg>
+                    </button>
                 </div>
-                <p id="procHint">提示：几何量与表格填写完整后<strong>自动</strong>计算 n̄、Δn、E<sub>i</sub> 与 E = Ē ± ΔE；E<sub>i</sub> 至少 3 个才可做格拉布斯剔除。导出前需已成功算出至少一次结果。</p>
-                <div id="procResult"></div>
+            </div>
+        </section>
+
+        <!-- 右侧视觉展示面板 (8 Cols) -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- 模块 4: 主量子显微镜物理仿真画面 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl relative overflow-hidden flex flex-col">
+                <!-- 碰撞与极限提示警报浮窗 -->
+                <div id="crash-overlay" class="absolute inset-0 bg-rose-950/90 backdrop-blur-sm z-40 flex flex-col items-center justify-center opacity-0 pointer-events-none transition-all duration-300">
+                    <div class="w-16 h-16 rounded-full bg-rose-500 flex items-center justify-center mb-4 animate-bounce">
+                        <svg class="w-10 h-10 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-rose-400 tracking-wider uppercase">!! TIP CRASH (针尖碰撞故障) !!</h3>
+                    <p class="text-sm text-slate-300 max-w-md text-center mt-2 leading-relaxed">
+                        由于探针太贴近表面原子或在手动模式中推进过快，<b>针尖与样品发生原子物理相撞</b>！压电陶瓷已熔毁，反馈系统失效。
+                    </p>
+                    <button id="btn-repair" class="mt-6 px-6 py-2.5 bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold rounded-lg transition-all shadow-lg active:scale-95">
+                        一键修复探针 (Reset Tip)
+                    </button>
+                </div>
+
+                <!-- 手动操控状态浮窗 -->
+                <div id="manual-toast" class="absolute top-4 left-4 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs px-3 py-2 rounded-lg flex items-center gap-2 pointer-events-none z-30 transition-all opacity-0">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                    <span>手动模式已开启：请点击并拖动上方黄色压电滑块或探针进行逼近！</span>
+                </div>
+
+                <div class="flex justify-between items-center mb-2.5">
+                    <h3 class="text-sm font-semibold tracking-wider text-slate-400 flex items-center gap-1.5 uppercase">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                        原子级量子势垒模拟仓
+                    </h3>
+                    <span class="text-xs code-font text-slate-500" id="visual-scale">水平视野: 30 Å | 垂直距离: ~10 Å</span>
+                </div>
+
+                <!-- 主物理渲染 Canvas -->
+                <div class="relative bg-slate-950 rounded-lg border border-slate-800 overflow-hidden" id="canvas-container">
+                    <canvas id="canvas-main" class="w-full block" style="height: 320px;"></canvas>
+                </div>
+            </div>
+
+            <!-- 模块 5: 双通道电子控制示波器 & 仪表 -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                <!-- 5.1: 悬浮式隧道电流纳米表盘 (4 Cols) -->
+                <div class="md:col-span-4 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between">
+                    <h3 class="text-xs font-semibold tracking-wider text-slate-400 uppercase mb-3 text-center">皮安级/纳安级电流计</h3>
+                    <div class="flex flex-col items-center justify-center py-2 relative">
+                        <!-- 表盘 Canvas -->
+                        <canvas id="canvas-meter" width="160" height="110" class="mx-auto"></canvas>
+                        <!-- 实时数据读取 -->
+                        <div class="text-center mt-2">
+                            <span class="text-3xl font-extrabold tracking-tight code-font text-emerald-400" id="meter-digital">0.00</span>
+                            <span class="text-xs text-slate-400 font-bold ml-1">nA</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-950 border border-slate-800 p-2 rounded-lg text-center">
+                        <span class="text-[11px] text-slate-400">实时势垒厚度 d: </span>
+                        <span class="text-xs font-bold code-font text-cyan-400 ml-1" id="val-real-gap">-- Å</span>
+                    </div>
+                </div>
+
+                <!-- 5.2: 电子运动示波器 (8 Cols) -->
+                <div class="md:col-span-8 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xs font-semibold tracking-wider text-slate-400 uppercase flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                            双通道实时示波显示屏 (Oscilloscope)
+                        </h3>
+                        <div class="flex items-center gap-3 text-[10px]">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-1 bg-cyan-400 inline-block"></span> 探针轨迹 Z(x)</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-1 bg-emerald-400 inline-block"></span> 隧道电流 I(x)</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-1 border-b border-dashed border-red-500 inline-block"></span> 真实原子形貌</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-950 rounded-lg border border-slate-800 flex-grow relative overflow-hidden">
+                        <canvas id="canvas-oscilloscope" class="w-full block" style="height: 120px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 科普与物理理论知识库面板 -->
+    <section class="p-6 bg-slate-950 border-t border-slate-800/80 w-full mt-8">
+        <div class="max-w-7xl mx-auto">
+            <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                量子隧穿物理原理 & STM 核心机理
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-slate-300">
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800/60">
+                    <h3 class="font-bold text-emerald-400 mb-2">1. 什么是量子隧穿？</h3>
+                    <p class="leading-relaxed text-xs">
+                        在经典力学中，如果粒子能量低于势垒高度，粒子绝不可能穿越势垒。
+                        但在量子力学中，电子表现出波动性。电子在真空中具有非零的衰减概率，其波函数会<b>“渗透”</b>穿过薄障碍。
+                    </p>
+                    <div class="mt-3 text-xs bg-slate-950/80 p-2.5 rounded-lg border border-slate-800 code-font">
+                        一维薛定谔势垒方程：
+                        $$\psi(z) = \psi(0) e^{-\kappa z}$$
+                        where:
+                        $$\kappa = \frac{\sqrt{2m(\Phi - eV)}}{\hbar}$$
+                    </div>
+                </div>
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800/60">
+                    <h3 class="font-bold text-cyan-400 mb-2">2. 指数级高灵敏度的由来</h3>
+                    <p class="leading-relaxed text-xs">
+                        由于隧道波函数与距离 $d$ 呈指数递减，导致隧穿电流 $I$ 随探针与样品原子间距 $d$ 的增加以<b>惊人的指数规律下降</b>。
+                        通常<b>间距仅增加 0.1 纳米（1 Å），电流就会衰减多达 10 倍！</b>这赋予了 STM 极高的垂直空间分辨率。
+                    </p>
+                    <div class="mt-3 text-xs bg-slate-950/80 p-2.5 rounded-lg border border-slate-800 code-font">
+                        隧道电流特征公式：
+                        $$I \propto V \cdot e^{-2\kappa d}$$
+                        其中 $d$ 为针尖与表面原子最近间距，$\Phi$ 为表面材料功函数。
+                    </div>
+                </div>
+                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800/60">
+                    <h3 class="font-bold text-warning mb-2">3. PID 反馈控制与双模式</h3>
+                    <p class="leading-relaxed text-xs">
+                        <b>恒定电流模式 (CC)：</b>利用高速压电控制环路，实时测量隧穿电流。若电流偏大（意味着距离过近），压电管立即向后拉缩探针，反之亦然。扫描完毕后，反馈控制产生的调控位移就构成了物体的原子轮廓线。
+                    </p>
+                    <p class="leading-relaxed text-xs mt-2">
+                        <b>恒定高度模式 (CH)：</b>高速扫描，反馈回路关闭，适合超平整样品，通过电流直接反映高度，可以做到极高帧率的原子成像。
+                    </p>
+                </div>
+            </div>
+            <div class="mt-4 p-3 bg-slate-900/20 rounded-lg text-center border border-slate-800/50 text-xs text-slate-500">
+                扫描隧道显微镜（Scanning Tunneling Microscope）由 <b>Gerd Binnig（格尔德·宾宁）</b> 与 <b>Heinrich Rohrer（海因里希·罗雷尔）</b> 于 1981 年在 IBM 苏黎世研究实验室发明，二人因此荣获 1986 年诺贝尔物理学奖。
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- ===== 引入 Three.js (ES Module) ===== -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-        }
-    }
-    </script>
+    <!-- 页脚 -->
+    <footer class="bg-slate-950 border-t border-slate-900 py-4 text-center text-xs text-slate-500">
+        &copy; 2026 量子物理仿真实验舱实验室. 版权所有。
+    </footer>
 
-    <script type="module">
-        // ================================================================
-        //  导入 Three.js 核心库及扩展
-        // ================================================================
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-
-        // ================================================================
-        //  物理常数 (真实实验参数)
-        // ================================================================
-        const PHYS = {
-            g: 9.8,            // 重力加速度 N/kg
-            massPerWeight: 1.0, // 每个砝码质量 kg
-            L: 1.0,            // 金属丝原长 m
-            D: 2.0,            // 镜-尺距离 m
-            d: 0.95e-3,        // 金属丝直径 m（使每 kg Δn 约零点几 cm）
-            b: 75e-3,          // 光杠杆常数 m
-            E_steel: 2.0e11,   // 钢的杨氏模量 Pa (参考值)
-        };
-        /** 望远镜光轴高度 = 标尺 0 刻度（cm 坐标原点），世界坐标 y */
-        const OPTIC_AXIS_Y = 12.5;
-        /** 标尺半量程（cm），保证 9 kg 时光斑仍在尺内 */
-        const SCALE_HALF_CM = 10;
-        /** 布局：光杠杆与砝码错开，避免穿模（世界坐标） */
-        const LAYOUT = {
-            leverX: -0.32,
-            leverZ: 2.55,
-            weightRadius: 1.28,
-            weightHeight: 0.68,
-            weightYStep: 0.72,
-            panRadius: 1.85,
-        };
-        // 金属丝截面积
-        const A = Math.PI * (PHYS.d / 2) ** 2;
-
-        // ================================================================
-        //  场景 / 相机 / 渲染器
-        // ================================================================
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf4f7f6);
-        scene.fog = new THREE.Fog(0xf4f7f6, 40, 120);
-
-        const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 200);
-        camera.position.set(28, 18, 42);
-        const INITIAL_CAM_POS = camera.position.clone();
-        const INITIAL_TARGET = new THREE.Vector3(10, 10, 0);
-
-        // WebGL 渲染器
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.2;
-        document.body.appendChild(renderer.domElement);
-
-        // CSS2D 渲染器 (用于标签)
-        const labelRenderer = new CSS2DRenderer();
-        labelRenderer.setSize(window.innerWidth, window.innerHeight);
-        labelRenderer.domElement.style.position = 'absolute';
-        labelRenderer.domElement.style.top = '0px';
-        labelRenderer.domElement.style.left = '0px';
-        labelRenderer.domElement.style.pointerEvents = 'none'; // 让标签不阻挡交互
-        document.body.appendChild(labelRenderer.domElement);
-
-        // 控制器
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.target.copy(INITIAL_TARGET);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.08;
-        controls.minDistance = 8;
-        controls.maxDistance = 100;
-        controls.update();
-
-        // ================================================================
-        //  灯光
-        // ================================================================
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdce3ed, 0.7);
-        scene.add(hemiLight);
-
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        dirLight.position.set(18, 35, 20);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-        dirLight.shadow.camera.near = 0.5;
-        dirLight.shadow.camera.far = 100;
-        dirLight.shadow.camera.left = -20;
-        dirLight.shadow.camera.right = 20;
-        dirLight.shadow.camera.top = 20;
-        dirLight.shadow.camera.bottom = -20;
-        dirLight.shadow.bias = -0.001;
-        scene.add(dirLight);
-
-        const fillLight = new THREE.DirectionalLight(0xc8d8ff, 0.4);
-        fillLight.position.set(-10, 15, -10);
-        scene.add(fillLight);
-
-        // ================================================================
-        //  材质
-        // ================================================================
-        const matMetal = new THREE.MeshStandardMaterial({ color: 0xb8c4d0, metalness: 0.6, roughness: 0.3 });
-        const matDarkMetal = new THREE.MeshStandardMaterial({ color: 0x6b7a8d, metalness: 0.7, roughness: 0.3 });
-        const matWire = new THREE.MeshStandardMaterial({ color: 0xd0d7e0, metalness: 0.8, roughness: 0.2 });
-        const matBrass = new THREE.MeshStandardMaterial({ color: 0xf1c40f, metalness: 0.7, roughness: 0.2 });
-        const matFloor = new THREE.MeshStandardMaterial({ color: 0xe4e9f0, roughness: 0.8, metalness: 0.1 });
-        const matWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
-        const matTelescope = new THREE.MeshStandardMaterial({ color: 0xb8c0c8, metalness: 0.45, roughness: 0.42 });
-        const matLens = new THREE.MeshStandardMaterial({ color: 0x223344, metalness: 0.2, roughness: 0.08, transparent: true, opacity: 0.35 });
-        const matChrome = new THREE.MeshStandardMaterial({ color: 0xdde2e8, metalness: 0.92, roughness: 0.18 });
-        const matCream = new THREE.MeshStandardMaterial({ color: 0xf2ebd9, roughness: 0.75, metalness: 0.05 });
-        const matBlackPlastic = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85, metalness: 0.08 });
-        const matLeverCast = new THREE.MeshStandardMaterial({ color: 0x9aa3ab, metalness: 0.35, roughness: 0.62 });
-        const matKnurl = new THREE.MeshStandardMaterial({ color: 0xc5cad1, metalness: 0.55, roughness: 0.48 });
-        /** 光杠杆实物：哑光银灰漆面 */
-        const matLeverPaintMatte = new THREE.MeshStandardMaterial({ color: 0x949ca4, metalness: 0.36, roughness: 0.74 });
-        /** 反射镜面：高反 + clearcoat */
-        const matLeverMirrorFace = new THREE.MeshPhysicalMaterial({
-            color: 0xd8eaf8,
-            metalness: 1,
-            roughness: 0.04,
-            clearcoat: 1,
-            clearcoatRoughness: 0.05,
-        });
-        /** 尾杆抛光金属 */
-        const matTailSteel = new THREE.MeshStandardMaterial({ color: 0xb0b8c0, metalness: 0.9, roughness: 0.16 });
-        const matScrewDark = new THREE.MeshStandardMaterial({ color: 0x25282c, metalness: 0.25, roughness: 0.82 });
-        /** 光杠杆支座（台面+立柱）半透明，避免挡视线 */
-        const matLeverSupportGlass = new THREE.MeshStandardMaterial({
-            color: 0xaab6c4,
-            metalness: 0.22,
-            roughness: 0.5,
-            transparent: true,
-            opacity: 0.4,
-        });
-        /** 金属丝下方竖向构件（下夹具、连接杆）半透明 */
-        const matCenterColumnGlass = new THREE.MeshStandardMaterial({
-            color: 0x6d7788,
-            metalness: 0.55,
-            roughness: 0.36,
-            transparent: true,
-            opacity: 0.38,
-        });
-
-        // ================================================================
-        //  地面 (接收阴影)
-        // ================================================================
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), matFloor);
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.y = -0.5;
-        floor.receiveShadow = true;
-        scene.add(floor);
-
-        // ================================================================
-        //  支架系统 (立柱 + 横梁 + 底座)
-        // ================================================================
-        // 底座
-        const base = new THREE.Mesh(new THREE.BoxGeometry(11, 0.8, 10), matDarkMetal);
-        base.position.set(0, -0.1, 0);
-        base.castShadow = true;
-        base.receiveShadow = true;
-        scene.add(base);
-
-        // 立柱
-        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 26, 32), matMetal);
-        pillar.position.set(-3, 12.5, 0);
-        pillar.castShadow = true;
-        pillar.receiveShadow = true;
-        scene.add(pillar);
-
-        // 顶部横梁
-        const topArm = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.6, 2.2), matDarkMetal);
-        topArm.position.set(0, 25.3, 0);
-        topArm.castShadow = true;
-        topArm.receiveShadow = true;
-        scene.add(topArm);
-
-        // ================================================================
-        //  金属丝 (可伸缩)
-        // ================================================================
-        const BASE_WIRE_LENGTH = 15;
-        const wireGeo = new THREE.CylinderGeometry(0.10, 0.10, BASE_WIRE_LENGTH, 16);
-        wireGeo.translate(0, -BASE_WIRE_LENGTH / 2, 0);
-        const wire = new THREE.Mesh(wireGeo, matWire);
-        wire.position.set(2, 25, 0);
-        wire.castShadow = true;
-        scene.add(wire);
-
-        // 上夹具
-        const upperChuck = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, 0.6, 16), matDarkMetal);
-        upperChuck.position.set(2, 25, 0);
-        upperChuck.castShadow = true;
-        scene.add(upperChuck);
-
-        // 下夹具（半透明，便于观察与金属丝、砝码的相对位置）
-        const lowerChuck = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 1.0, 32), matCenterColumnGlass);
-        lowerChuck.position.set(2, 10, 0);
-        lowerChuck.castShadow = false;
-        lowerChuck.receiveShadow = true;
-        scene.add(lowerChuck);
-
-        // 砝码托盘（半径与砝码柱匹配，避免与光杠杆重叠）
-        const pan = new THREE.Mesh(new THREE.CylinderGeometry(LAYOUT.panRadius, LAYOUT.panRadius, 0.28, 32), matDarkMetal);
-        pan.position.set(2, 5.8, 0);
-        pan.castShadow = true;
-        pan.receiveShadow = true;
-        scene.add(pan);
-
-        // 托盘连接杆（半透明）
-        const panRod = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4, 16), matCenterColumnGlass);
-        panRod.position.set(2, 8, 0);
-        panRod.castShadow = false;
-        scene.add(panRod);
-
-        // ================================================================
-        //  砝码 (9 个 × 1 kg)
-        // ================================================================
-        const weights = [];
-        for (let i = 0; i < 9; i++) {
-            const w = new THREE.Mesh(
-                new THREE.CylinderGeometry(LAYOUT.weightRadius, LAYOUT.weightRadius + 0.03, LAYOUT.weightHeight, 32),
-                matBrass
-            );
-            w.position.set(2, 6.42 + i * LAYOUT.weightYStep, 0);
-            w.castShadow = true;
-            w.receiveShadow = true;
-            w.visible = false;
-            scene.add(w);
-            weights.push(w);
-        }
-
-        // ================================================================
-        //  光杠杆（高精度：C 形架、镜框、中心座、尾锥、安装孔、滚花旋钮、螺钉）
-        // ================================================================
-        const leverGroup = new THREE.Group();
-        leverGroup.position.set(LAYOUT.leverX, 10.7, LAYOUT.leverZ);
-
-        function addKnurledKnob(x, y, z, ry, rz, scaleS) {
-            const g = new THREE.Group();
-            g.position.set(x, y, z);
-            g.rotation.y = ry;
-            g.rotation.z = rz;
-            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.125 * scaleS, 0.028 * scaleS, 8, 24), matKnurl);
-            ring.rotation.y = Math.PI / 2;
-            g.add(ring);
-            const core = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * scaleS, 0.11 * scaleS, 0.2 * scaleS, 16), matKnurl);
-            core.rotation.z = Math.PI / 2;
-            for (let i = 0; i < 22; i++) {
-                const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.016 * scaleS, 0.22 * scaleS, 0.032 * scaleS), matKnurl);
-                const a = (i / 22) * Math.PI * 2;
-                ridge.position.set(Math.cos(a) * 0.11 * scaleS, Math.sin(a) * 0.11 * scaleS, 0);
-                ridge.rotation.z = a;
-                g.add(ridge);
-            }
-            g.add(core);
-            leverGroup.add(g);
-        }
-
-        function addPhillipsScrew(px, py, pz, scaleS) {
-            const head = new THREE.Mesh(new THREE.CylinderGeometry(0.065 * scaleS, 0.065 * scaleS, 0.028 * scaleS, 6), matKnurl);
-            head.position.set(px, py, pz);
-            head.rotation.z = Math.PI / 2;
-            head.castShadow = true;
-            leverGroup.add(head);
-            const slot1 = new THREE.Mesh(new THREE.BoxGeometry(0.09 * scaleS, 0.012 * scaleS, 0.014 * scaleS), matScrewDark);
-            slot1.position.set(px, py, pz + 0.015 * scaleS);
-            leverGroup.add(slot1);
-            const slot2 = new THREE.Mesh(new THREE.BoxGeometry(0.012 * scaleS, 0.09 * scaleS, 0.014 * scaleS), matScrewDark);
-            slot2.position.set(px, py, pz + 0.015 * scaleS);
-            leverGroup.add(slot2);
-        }
-
-        const cBase = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.34, 1.14), matLeverPaintMatte);
-        cBase.position.set(0, 0.12, 0);
-        cBase.castShadow = true;
-        leverGroup.add(cBase);
-        [[-0.42, -0.22], [0.42, -0.22], [-0.42, 0.22], [0.42, 0.22]].forEach(([hx, hz]) => {
-            const h = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.38, 14), matScrewDark);
-            h.position.set(hx, 0.12, hz);
-            h.rotation.x = Math.PI / 2;
-            leverGroup.add(h);
-        });
-
-        const footL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.36, 12), matBlackPlastic);
-        footL.position.set(-0.56, -0.08, -0.44);
-        footL.castShadow = true;
-        leverGroup.add(footL);
-        const footR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.36, 12), matBlackPlastic);
-        footR.position.set(0.56, -0.08, -0.44);
-        footR.castShadow = true;
-        leverGroup.add(footR);
-
-        const armL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.18, 0.38), matLeverPaintMatte);
-        armL.position.set(-0.57, 0.76, -0.14);
-        armL.castShadow = true;
-        leverGroup.add(armL);
-        const armR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.18, 0.38), matLeverPaintMatte);
-        armR.position.set(0.57, 0.76, -0.14);
-        armR.castShadow = true;
-        leverGroup.add(armR);
-        const yokeL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.26, 0.12), matLeverPaintMatte);
-        yokeL.position.set(-0.57, 1.02, -0.02);
-        yokeL.castShadow = true;
-        leverGroup.add(yokeL);
-        const yokeR = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.26, 0.12), matLeverPaintMatte);
-        yokeR.position.set(0.57, 1.02, -0.02);
-        yokeR.castShadow = true;
-        leverGroup.add(yokeR);
-
-        const cBridge = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.22, 0.28), matLeverPaintMatte);
-        cBridge.position.set(0, 1.42, -0.14);
-        cBridge.castShadow = true;
-        leverGroup.add(cBridge);
-
-        const stem = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.58, 0.44), matLeverPaintMatte);
-        stem.position.set(0, 0.46, 0.24);
-        stem.castShadow = true;
-        leverGroup.add(stem);
-        addPhillipsScrew(0.26, 0.52, 0.46, 1);
-        addPhillipsScrew(0.26, 0.38, 0.46, 1);
-
-        const mirrorBack = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 32), matLeverPaintMatte);
-        mirrorBack.position.set(0, 1.05, -0.06);
-        mirrorBack.rotation.x = Math.PI / 2;
-        mirrorBack.castShadow = true;
-        leverGroup.add(mirrorBack);
-        const mirrorRim = new THREE.Mesh(new THREE.TorusGeometry(0.51, 0.042, 10, 48), matBlackPlastic);
-        mirrorRim.position.set(0, 1.05, -0.11);
-        mirrorRim.rotation.x = Math.PI / 2;
-        mirrorRim.castShadow = true;
-        leverGroup.add(mirrorRim);
-        const mirrorRimOuter = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.018, 6, 40), matKnurl);
-        mirrorRimOuter.position.set(0, 1.05, -0.125);
-        mirrorRimOuter.rotation.x = Math.PI / 2;
-        leverGroup.add(mirrorRimOuter);
-        const mirror = new THREE.Mesh(new THREE.CircleGeometry(0.46, 64), matLeverMirrorFace);
-        mirror.position.set(0, 1.05, -0.095);
-        mirror.rotation.y = Math.PI;
-        mirror.castShadow = true;
-        leverGroup.add(mirror);
-
-        const tailUpper = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.05, 2.25, 16), matTailSteel);
-        tailUpper.position.set(0, -1.18, 0.24);
-        tailUpper.castShadow = true;
-        leverGroup.add(tailUpper);
-        const tailTip = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.006, 0.42, 12), matTailSteel);
-        tailTip.position.set(0, -2.51, 0.24);
-        tailTip.castShadow = true;
-        leverGroup.add(tailTip);
-
-        addKnurledKnob(-0.74, 1.05, -0.14, 0, Math.PI / 2, 1);
-        addKnurledKnob(0.74, 1.05, -0.14, 0, Math.PI / 2, 1);
-        addKnurledKnob(0.34, 0.44, 0.48, Math.PI / 2, 0, 0.88);
-
-        scene.add(leverGroup);
-
-        // ================================================================
-        //  光杠杆平台 (支撑块)
-        // ================================================================
-        // 光杠杆支座：勿用「整柱」包住 y=0～10，否则会与砝码柱（y≈6～12）穿模
-        const leverPedestal = new THREE.Mesh(new THREE.BoxGeometry(0.95, 9.45, 0.95), matLeverSupportGlass);
-        leverPedestal.position.set(-0.38, 4.85, 2.52);
-        leverPedestal.castShadow = false;
-        leverPedestal.receiveShadow = true;
-        scene.add(leverPedestal);
-        const leverTableTop = new THREE.Mesh(new THREE.BoxGeometry(3.35, 0.52, 2.85), matLeverSupportGlass);
-        leverTableTop.position.set(-0.38, 10.2, 2.52);
-        leverTableTop.castShadow = false;
-        leverTableTop.receiveShadow = true;
-        scene.add(leverTableTop);
-
-        // ================================================================
-        //  立柱 + 标尺照明器 + 望远镜支架（与实物结构一致）
-        // ================================================================
-        const standPole = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 14, 28), matChrome);
-        standPole.position.set(26, OPTIC_AXIS_Y, 2.2);
-        standPole.castShadow = true;
-        scene.add(standPole);
-        const standBasePlate = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.55, 0.25, 40), matMetal);
-        standBasePlate.position.set(26, OPTIC_AXIS_Y - 7.1, 2.2);
-        standBasePlate.receiveShadow = true;
-        scene.add(standBasePlate);
-
-        function makeStarKnob(px, py, pz) {
-            const k = new THREE.Group();
-            k.position.set(px, py, pz);
-            for (let i = 0; i < 5; i++) {
-                const blade = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.12, 0.35), matBlackPlastic);
-                blade.position.y = Math.sin((i / 5) * Math.PI * 2) * 0.12;
-                blade.position.x = Math.cos((i / 5) * Math.PI * 2) * 0.12;
-                blade.rotation.z = (i / 5) * Math.PI * 2;
-                blade.castShadow = true;
-                k.add(blade);
-            }
-            const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.18, 12), matBlackPlastic);
-            hub.rotation.x = Math.PI / 2;
-            k.add(hub);
-            return k;
-        }
-
-        const clampMat = new THREE.MeshStandardMaterial({ color: 0xc5ccd4, roughness: 0.55, metalness: 0.25 });
-        const clampIllu = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.35, 0.55), clampMat);
-        clampIllu.position.set(26, OPTIC_AXIS_Y + 2.8, 2.2);
-        clampIllu.castShadow = true;
-        scene.add(clampIllu);
-        scene.add(makeStarKnob(26.45, OPTIC_AXIS_Y + 2.8, 2.2));
-        const clampTel = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.35, 0.55), clampMat);
-        clampTel.position.set(26, OPTIC_AXIS_Y - 0.2, 2.2);
-        clampTel.castShadow = true;
-        scene.add(clampTel);
-        scene.add(makeStarKnob(26.45, OPTIC_AXIS_Y - 0.2, 2.2));
-
-        // 标尺照明器（奶黄色外壳、竖槽、内标尺）
-        const scaleGroup = new THREE.Group();
-        const illuOuter = new THREE.Mesh(new THREE.BoxGeometry(0.55, SCALE_HALF_CM * 2 + 1.2, 2.6), matCream);
-        illuOuter.castShadow = true;
-        illuOuter.receiveShadow = true;
-        scaleGroup.add(illuOuter);
-        const slotRim = new THREE.Mesh(new THREE.BoxGeometry(0.22, SCALE_HALF_CM * 2 + 0.35, 1.25), matBlackPlastic);
-        slotRim.position.set(0, 0, 0.42);
-        scaleGroup.add(slotRim);
-        const scaleBoard = new THREE.Mesh(new THREE.BoxGeometry(0.06, SCALE_HALF_CM * 2, 0.85), matWhite);
-        scaleBoard.position.set(-0.02, 0, 0.42);
-        scaleBoard.receiveShadow = true;
-        scaleGroup.add(scaleBoard);
-        const lineMat = new THREE.LineBasicMaterial({ color: 0x111111 });
-        for (let cm = -SCALE_HALF_CM; cm <= SCALE_HALF_CM; cm++) {
-            const yLocal = cm;
-            const isMajor = cm % 5 === 0;
-            const len = isMajor ? 0.55 : (cm % 1 === 0 ? 0.38 : 0.22);
-            const pts = [
-                new THREE.Vector3(-0.04, yLocal, 0.82),
-                new THREE.Vector3(-0.04 + len, yLocal, 0.82)
-            ];
-            scaleGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
-        }
-        const cv = document.createElement('canvas');
-        cv.width = 512;
-        cv.height = 128;
-        const cx = cv.getContext('2d');
-        cx.fillStyle = '#e8dcc8';
-        cx.fillRect(0, 0, 512, 128);
-        cx.fillStyle = '#1a2744';
-        cx.font = 'bold 38px sans-serif';
-        cx.fillText('标尺照明器', 120, 52);
-        cx.font = 'bold 26px sans-serif';
-        cx.fillText('西安理工大学', 150, 92);
-        const texIllu = new THREE.CanvasTexture(cv);
-        if (THREE.SRGBColorSpace !== undefined) texIllu.colorSpace = THREE.SRGBColorSpace;
-        const topLbl = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.48), new THREE.MeshBasicMaterial({ map: texIllu, transparent: true }));
-        topLbl.position.set(0, SCALE_HALF_CM + 0.55, 1.15);
-        topLbl.rotation.x = -0.15;
-        scaleGroup.add(topLbl);
-
-        scaleGroup.position.set(26, OPTIC_AXIS_Y, 0.2);
-        scene.add(scaleGroup);
-
-        for (let cm = -SCALE_HALF_CM; cm <= SCALE_HALF_CM; cm += 5) {
-            const lbl = document.createElement('div');
-            lbl.textContent = cm === 0 ? '0' : (cm > 0 ? '+' + cm : String(cm));
-            lbl.className = 'label-3d-scale';
-            const label = new CSS2DObject(lbl);
-            label.position.set(26.35, OPTIC_AXIS_Y + cm, 0.95);
-            scene.add(label);
-        }
-
-        // 望远镜（镜筒、物镜喇叭口、目镜与调焦滚花、侧向手轮、黑色底座）
-        const telescopeGroup = new THREE.Group();
-        const telBase = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.28, 1.4), matBlackPlastic);
-        telBase.position.set(0, -0.55, 0);
-        telBase.castShadow = true;
-        telescopeGroup.add(telBase);
-        const tubeMain = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 2.2, 28), matTelescope);
-        tubeMain.rotation.x = Math.PI / 2;
-        tubeMain.castShadow = true;
-        telescopeGroup.add(tubeMain);
-        const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.4, 0.55, 28), matTelescope);
-        bell.rotation.x = Math.PI / 2;
-        bell.position.z = -1.35;
-        bell.castShadow = true;
-        telescopeGroup.add(bell);
-        const objRing = new THREE.Mesh(new THREE.CylinderGeometry(0.64, 0.64, 0.12, 28), matDarkMetal);
-        objRing.rotation.x = Math.PI / 2;
-        objRing.position.z = -1.62;
-        telescopeGroup.add(objRing);
-        const objGlass = new THREE.Mesh(new THREE.CircleGeometry(0.52, 32), matLens);
-        objGlass.position.z = -1.68;
-        objGlass.rotation.x = Math.PI / 2;
-        telescopeGroup.add(objGlass);
-        const eyeHousing = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.34, 0.45, 20), matDarkMetal);
-        eyeHousing.rotation.x = Math.PI / 2;
-        eyeHousing.position.z = 1.32;
-        telescopeGroup.add(eyeHousing);
-        const focusRing = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.22, 24), matKnurl);
-        focusRing.rotation.x = Math.PI / 2;
-        focusRing.position.z = 1.58;
-        telescopeGroup.add(focusRing);
-        const eyeLens = new THREE.Mesh(new THREE.CircleGeometry(0.2, 20), matLens);
-        eyeLens.position.z = 1.72;
-        eyeLens.rotation.x = Math.PI / 2;
-        telescopeGroup.add(eyeLens);
-        const sight = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 0.12), matBlackPlastic);
-        sight.position.set(0, 0.42, 1.15);
-        telescopeGroup.add(sight);
-        const sideWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.12, 24), matChrome);
-        sideWheel.rotation.z = Math.PI / 2;
-        sideWheel.position.set(0.48, 0.05, -0.2);
-        telescopeGroup.add(sideWheel);
-        const thumbUnder = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.12, 10), matBlackPlastic);
-        thumbUnder.position.set(-0.35, -0.68, 0.5);
-        thumbUnder.rotation.z = 0.4;
-        telescopeGroup.add(thumbUnder);
-
-        telescopeGroup.position.set(26, OPTIC_AXIS_Y, 1.35);
-        telescopeGroup.lookAt(new THREE.Vector3(LAYOUT.leverX, OPTIC_AXIS_Y - 0.2, LAYOUT.leverZ - 0.08));
-        scene.add(telescopeGroup);
-
-        // ================================================================
-        //  激光光路
-        // ================================================================
-        const beamMat = new THREE.MeshBasicMaterial({
-            color: 0xff3333,
-            transparent: true,
-            opacity: 0.7
-        });
-
-        // 入射光束 (圆柱体)
-        const inBeamGeo = new THREE.CylinderGeometry(0.04, 0.04, 1, 8);
-        inBeamGeo.translate(0, 0.5, 0);
-        inBeamGeo.rotateX(Math.PI / 2);
-        const inBeam = new THREE.Mesh(inBeamGeo, beamMat);
-        scene.add(inBeam);
-
-        // 反射光束
-        const outBeamGeo = new THREE.CylinderGeometry(0.04, 0.04, 1, 8);
-        outBeamGeo.translate(0, 0.5, 0);
-        outBeamGeo.rotateX(Math.PI / 2);
-        const outBeam = new THREE.Mesh(outBeamGeo, beamMat);
-        scene.add(outBeam);
-
-        // 光斑
-        const spotMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const spotMesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 24, 24), spotMat);
-        scene.add(spotMesh);
-
-        // 光斑光晕
-        const glowMat = new THREE.MeshBasicMaterial({
-            color: 0xff4444,
-            transparent: true,
-            opacity: 0.25
-        });
-        const glowMesh = new THREE.Mesh(new THREE.SphereGeometry(0.40, 16, 16), glowMat);
-        scene.add(glowMesh);
-
-        // ================================================================
-        //  光斑轨迹 (拖尾效果)
-        // ================================================================
-        const MAX_TRAIL = 60;
-        const trailPositions = [];
-        const trailGeo = new THREE.BufferGeometry();
-        const trailPosArray = new Float32Array(MAX_TRAIL * 3);
-        trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPosArray, 3));
-        trailGeo.setDrawRange(0, 0);
-        const trailMat2 = new THREE.LineBasicMaterial({
-            color: 0xff6666,
-            transparent: true,
-            opacity: 0.35,
-            linewidth: 1
-        });
-        const trailLine = new THREE.Line(trailGeo, trailMat2);
-        scene.add(trailLine);
-
-        // 轨迹点 (小圆球)
-        const dotMat = new THREE.MeshBasicMaterial({
-            color: 0xff6666,
-            transparent: true,
-            opacity: 0.4
-        });
-        const trailDots = [];
-        for (let i = 0; i < 20; i++) {
-            const dot = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), dotMat);
-            dot.visible = false;
-            scene.add(dot);
-            trailDots.push(dot);
-        }
-
-        // ================================================================
-        //  CSS2D 标签 — 部件标注
-        // ================================================================
-        function makeLabel(text, pos, extraClass = '') {
-            const div = document.createElement('div');
-            div.textContent = text;
-            div.className = 'label-3d ' + extraClass;
-            const label = new CSS2DObject(div);
-            label.position.copy(pos);
-            scene.add(label);
-            return label;
-        }
-
-        makeLabel('🏗 支架', new THREE.Vector3(-3, 16, 1.2));
-        makeLabel('🔩 金属丝', new THREE.Vector3(2.8, 18, 0));
-        makeLabel('⚖ 光杠杆', new THREE.Vector3(LAYOUT.leverX + 0.6, 12.5, LAYOUT.leverZ + 0.35));
-        makeLabel('🪞 反射镜', new THREE.Vector3(LAYOUT.leverX + 0.35, 11.9, LAYOUT.leverZ), 'label-3d-sm');
-        makeLabel('🏋 砝码', new THREE.Vector3(3.5, 4.5, 0.4));
-        makeLabel('📏 标尺照明器', new THREE.Vector3(27.2, OPTIC_AXIS_Y + 6, 0));
-        makeLabel('🔭 望远镜', new THREE.Vector3(27, 14.5, 2.2));
-        makeLabel('🔴 光斑', new THREE.Vector3(26.5, 12.5, 1.0), 'label-3d-sm');
-
-        // ================================================================
-        //  交互状态
-        // ================================================================
-        const slider = document.getElementById('weightSlider');
-        const weightCountLabel = document.getElementById('weightCount');
-        const demoBtn = document.getElementById('demoBtn');
-        const resetViewBtn = document.getElementById('resetViewBtn');
-
-        // 金属丝视觉伸长（仅用于丝与夹具动画）
-        const VISUAL_STRETCH = 0.25;
-        /** 光杠杆倾角显示放大（光斑位移仍按真实物理） */
-        const LEVER_ANGLE_VIS = 55;
-
-        const lightSource = new THREE.Vector3(25.6, OPTIC_AXIS_Y, 1.15);
-
-        let isDemoRunning = false;
-        let demoTimer = null;
-
-        // ================================================================
-        //  核心更新函数
-        // ================================================================
-        function updateScene() {
-            const count = parseInt(slider.value);
-            weightCountLabel.textContent = count;
-
-            // ---- 砝码显隐 ----
-            weights.forEach((w, i) => { w.visible = i < count; });
-
-            // ---- 视觉伸长 ----
-            const visualDeltaL = count * VISUAL_STRETCH;
-            wire.scale.y = (BASE_WIRE_LENGTH + visualDeltaL) / BASE_WIRE_LENGTH;
-
-            const yOff = -visualDeltaL;
-            lowerChuck.position.y = 10 + yOff;
-            pan.position.y = 5.8 + yOff;
-            panRod.position.y = 8 + yOff;
-            weights.forEach((w, i) => {
-                w.position.y = 6.42 + yOff + i * LAYOUT.weightYStep;
-            });
-
-            leverGroup.position.set(LAYOUT.leverX, 10.7 + yOff, LAYOUT.leverZ);
-
-            const F = count * PHYS.massPerWeight * PHYS.g;
-            const deltaL_real = count > 0 ? (F * PHYS.L) / (A * PHYS.E_steel) : 0;
-            const theta_real = count > 0 ? deltaL_real / PHYS.b : 0;
-            leverGroup.rotation.x = -theta_real * LEVER_ANGLE_VIS;
-
-            const mirrorHitY = leverGroup.position.y + 1.05;
-            const mirrorPos = new THREE.Vector3(LAYOUT.leverX, mirrorHitY, LAYOUT.leverZ - 0.1);
-
-            const deltaN_m = PHYS.D * Math.tan(2 * theta_real);
-            const deltaN_cm = deltaN_m * 100;
-            const targetY = OPTIC_AXIS_Y - deltaN_cm;
-            const targetPos = new THREE.Vector3(25.85, targetY, 0.88);
-
-            // 更新光斑
-            spotMesh.position.copy(targetPos);
-            glowMesh.position.copy(targetPos);
-            glowMesh.position.z = 0.1;
-
-            // ---- 更新光束 ----
-            const inDist = lightSource.distanceTo(mirrorPos);
-            inBeam.position.copy(lightSource);
-            inBeam.lookAt(mirrorPos);
-            inBeam.scale.z = inDist;
-
-            const outDist = mirrorPos.distanceTo(targetPos);
-            outBeam.position.copy(mirrorPos);
-            outBeam.lookAt(targetPos);
-            outBeam.scale.z = outDist;
-
-            // ---- 更新光斑轨迹 ----
-            trailPositions.push(targetPos.clone());
-            if (trailPositions.length > MAX_TRAIL) trailPositions.shift();
-
-            const posAttr = trailLine.geometry.attributes.position;
-            const array = posAttr.array;
-            const len = trailPositions.length;
-            for (let i = 0; i < len; i++) {
-                const p = trailPositions[i];
-                array[i * 3] = p.x;
-                array[i * 3 + 1] = p.y;
-                array[i * 3 + 2] = p.z;
-            }
-            posAttr.needsUpdate = true;
-            trailGeo.setDrawRange(0, len);
-
-            // 轨迹点 (取最近 20 个)
-            const dotCount = Math.min(trailDots.length, len);
-            for (let i = 0; i < trailDots.length; i++) {
-                if (i < dotCount) {
-                    const idx = len - dotCount + i;
-                    const p = trailPositions[idx];
-                    trailDots[i].position.copy(p);
-                    trailDots[i].visible = true;
-                    // 透明度渐变 (新的更亮)
-                    trailDots[i].material.opacity = 0.15 + 0.35 * (i / dotCount);
-                } else {
-                    trailDots[i].visible = false;
-                }
-            }
-
-            // ---- 更新数据面板 (真实物理值) ----
-            updateDataPanel(count);
-        }
-
-        // ================================================================
-        //  数据面板更新 (真实物理计算)
-        // ================================================================
-        function updateDataPanel(count) {
-            const m = count * PHYS.massPerWeight;
-            const Ftot = m * PHYS.g;
-            const deltaL_real = count > 0 ? (Ftot * PHYS.L) / (A * PHYS.E_steel) : 0;
-            const theta_real = count > 0 ? deltaL_real / PHYS.b : 0;
-            const deltaN_real = count > 0 ? PHYS.D * Math.tan(2 * theta_real) : 0;
-            const deltaN_cm = deltaN_real * 100;
-
-            document.getElementById('dMass').textContent = m.toFixed(2) + ' kg';
-            document.getElementById('dDeltaL').textContent = (deltaL_real * 1000).toFixed(3) + ' mm';
-            document.getElementById('dTheta').textContent = (theta_real * 1000).toFixed(3) + ' mrad';
-            document.getElementById('dDeltaN').textContent = deltaN_cm.toFixed(2) + ' cm';
-
-            const F_fixed = 9.8;
-            if (count > 0) {
-                const dnPerKg = deltaN_real / count;
-                const E_calc = (8 * F_fixed * PHYS.L * PHYS.D) / (Math.PI * PHYS.d ** 2 * PHYS.b * dnPerKg);
-                const exp = Math.floor(Math.log10(E_calc));
-                const mant = E_calc / (10 ** exp);
-                document.getElementById('dE').innerHTML = `${mant.toFixed(2)} × 10<sup>${exp}</sup> Pa`;
-            } else {
-                document.getElementById('dE').textContent = '—';
-            }
-        }
-
-        // ================================================================
-        //  自动演示
-        // ================================================================
-        let demoDirection = 1;
-
-        function toggleDemo() {
-            isDemoRunning = !isDemoRunning;
-            if (isDemoRunning) {
-                demoBtn.textContent = '⏹ 停止';
-                demoBtn.classList.add('active');
-                document.body.classList.add('demo-running');
-                runDemoStep();
-            } else {
-                stopDemo();
-            }
-        }
-
-        function runDemoStep() {
-            if (!isDemoRunning) return;
-            let val = parseInt(slider.value) + demoDirection;
-            if (val >= 9) { val = 9; demoDirection = -1; }
-            if (val <= 0) { val = 0; demoDirection = 1; }
-            slider.value = val;
-            updateScene();
-            demoTimer = setTimeout(runDemoStep, 1200);
-        }
-
-        function stopDemo() {
-            isDemoRunning = false;
-            demoBtn.textContent = '▶ 自动演示';
-            demoBtn.classList.remove('active');
-            document.body.classList.remove('demo-running');
-            if (demoTimer) {
-                clearTimeout(demoTimer);
-                demoTimer = null;
-            }
-        }
-
-        // ================================================================
-        //  复位视角
-        // ================================================================
-        function resetView() {
-            camera.position.copy(INITIAL_CAM_POS);
-            controls.target.copy(INITIAL_TARGET);
-            controls.update();
-        }
-
-        // ================================================================
-        //  事件绑定
-        // ================================================================
-        slider.addEventListener('input', () => {
-            if (isDemoRunning) stopDemo();
-            updateScene();
-        });
-
-        demoBtn.addEventListener('click', toggleDemo);
-        resetViewBtn.addEventListener('click', resetView);
-
-        // 键盘快捷键: 空格切换演示, R 复位
-        window.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
-            if (e.code === 'Space') {
-                e.preventDefault();
-                toggleDemo();
-            }
-            if (e.code === 'KeyR') {
-                resetView();
-            }
-        });
-
-        // ================================================================
-        //  窗口自适应
-        // ================================================================
-        window.addEventListener('resize', () => {
-            const w = window.innerWidth;
-            const h = window.innerHeight;
-            camera.aspect = w / h;
-            camera.updateProjectionMatrix();
-            renderer.setSize(w, h);
-            labelRenderer.setSize(w, h);
-        });
-
-        // ================================================================
-        //  初始场景
-        // ================================================================
-        updateScene();
-
-        window.__YOUNG_DEMO_PHYS__ = {
-            g: PHYS.g,
-            L: PHYS.L,
-            D: PHYS.D,
-            d_mm: PHYS.d * 1000,
-            b_mm: PHYS.b * 1000,
-            massPerWeight: PHYS.massPerWeight,
-            F_fixed_N: 9.8,
-        };
-
-        // ================================================================
-        //  渲染循环
-        // ================================================================
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-
-            // 光斑呼吸动画
-            const breath = 0.85 + 0.15 * Math.sin(Date.now() * 0.003);
-            spotMesh.scale.setScalar(breath);
-            glowMesh.scale.setScalar(1.5 * breath);
-
-            // 光束透明度微动
-            beamMat.opacity = 0.6 + 0.15 * Math.sin(Date.now() * 0.002);
-
-            renderer.render(scene, camera);
-            labelRenderer.render(scene, camera);
-        }
-
-        animate();
-
-        console.log('✅ 杨氏模量 3D 教学演示已启动');
-        console.log('📌 快捷键: Space=自动演示, R=复位视角');
-    </script>
-
+    <!-- 物理仿真引擎 JavaScript 代码 -->
     <script>
-    (function () {
-        const LS_KEY = 'young_modulus_proc_v2';
-        const g = 9.8;
-        const F_FIXED = 9.8;
-
-        const GRUBBS_G05 = {
-            3: 1.153, 4: 1.463, 5: 1.672, 6: 1.822, 7: 1.938, 8: 2.032,
-            9: 2.110, 10: 2.176, 11: 2.234, 12: 2.285, 13: 2.331, 14: 2.371,
-            15: 2.409, 16: 2.443, 17: 2.475, 18: 2.504, 19: 2.532, 20: 2.557,
-            21: 2.58, 22: 2.6, 23: 2.62, 24: 2.64, 25: 2.66, 26: 2.68, 27: 2.7, 28: 2.71, 29: 2.73, 30: 2.75
+        // ----------------- 物理模拟基本配置 -----------------
+        const PHYSICS = {
+            m: 9.10938356e-31,      // 电子质量
+            hbar: 1.0545718e-34,    // 约化普朗克常数
+            e: 1.60217663e-19,      // 电子电荷
+            angstrom: 1e-10,        // 埃
         };
 
-        function grubbsCrit(n) {
-            if (n < 3) return Infinity;
-            if (n > 30) return 2.75;
-            return GRUBBS_G05[n] || 2.57;
-        }
+        // ----------------- 初始化配置 -----------------
+        let isRunning = true;
+        let mode = 'CC'; // CC: 恒定电流, CH: 恒定高度, MANUAL: 手动
+        let selectedSample = 'graphite'; // graphite, step, adatom
 
-        function parseList(str) {
-            return str.split(/[,，;\s]+/).map(s => s.trim()).filter(Boolean).map(Number).filter(x => !Number.isNaN(x));
-        }
+        // 变量状态
+        let state = {
+            voltage: 1.50,         // V (Volt)
+            phi: 4.5,              // eV (Work Function)
+            setpointCurrent: 2.0,  // nA
+            kp: 0.15,              // 反馈环路比例系数
+            scanSpeed: 1.5,        // 扫描步进速度
+            isCrashed: false,
+            
+            // 实时几何参数
+            probeX: 50,            // 探针当前X坐标 (0 - 600 px)
+            probeY: 150,           // 探针当前Y坐标 (物理坐标，0在底部, 300在顶部)
+            probeTargetY: 150,     // 探针目标Y坐标 (PID反馈值)
+            scanDir: 1,            // 扫描方向 1:右, -1:左
+            
+            // 电流状态
+            current: 0,            // 实际隧穿电流 nA
+            
+            // 历史记录（示波器用）
+            history: []
+        };
 
-        function mean(arr) {
-            if (!arr.length) return NaN;
-            return arr.reduce((a, b) => a + b, 0) / arr.length;
-        }
+        // ----------------- DOM 获取 -----------------
+        const canvasMain = document.getElementById('canvas-main');
+        const ctxMain = canvasMain.getContext('2d');
+        const canvasMeter = document.getElementById('canvas-meter');
+        const ctxMeter = canvasMeter.getContext('2d');
+        const canvasOsc = document.getElementById('canvas-oscilloscope');
+        const ctxOsc = canvasOsc.getContext('2d');
 
-        function stdSample(arr) {
-            const n = arr.length;
-            if (n < 2) return 0;
-            const m = mean(arr);
-            return Math.sqrt(arr.reduce((s, x) => s + (x - m) ** 2, 0) / (n - 1));
-        }
+        // 滑块及数据显示
+        const paramVoltage = document.getElementById('param-voltage');
+        const valVoltage = document.getElementById('val-voltage');
+        const paramCurrentSet = document.getElementById('param-current-set');
+        const valCurrentSet = document.getElementById('val-current-set');
+        const paramKp = document.getElementById('param-kp');
+        const valKp = document.getElementById('val-kp');
+        const paramPhi = document.getElementById('param-phi');
+        const valPhi = document.getElementById('val-phi');
+        const paramSpeed = document.getElementById('param-speed');
+        const valSpeed = document.getElementById('val-speed');
 
-        function uATypeMean(arr) {
-            const n = arr.length;
-            if (n < 2) return 0;
-            return stdSample(arr) / Math.sqrt(n);
-        }
+        const containerSetpoint = document.getElementById('container-setpoint');
+        const containerFeedback = document.getElementById('container-feedback');
+        const containerSpeed = document.getElementById('container-speed');
 
-        function uBRect(delta) {
-            return delta / Math.sqrt(3);
-        }
+        // 按钮
+        const btnPlay = document.getElementById('btn-play');
+        const btnReset = document.getElementById('btn-reset');
+        const btnRepair = document.getElementById('btn-repair');
+        const crashOverlay = document.getElementById('crash-overlay');
+        const manualToast = document.getElementById('manual-toast');
 
-        function combineUAUB(uA, uB) {
-            return Math.sqrt(uA * uA + uB * uB);
-        }
-
-        function youngE(L, D, d, b, deltaN_m) {
-            return (8 * F_FIXED * L * D) / (Math.PI * d * d * b * deltaN_m);
-        }
-
-        /** E_r：保留 1 位有效数字、只进不舍（向上取整到该精度） */
-        function ceilErOneSignificantDigit(er) {
-            if (!isFinite(er) || er <= 0) return er;
-            let e = Math.floor(Math.log10(er));
-            let mant = er / Math.pow(10, e);
-            let m = Math.ceil(mant - 1e-15);
-            if (m >= 10) {
-                m = 1;
-                e += 1;
+        // ----------------- 样品表面形貌方程 -----------------
+        // 物理基准线，以 canvas 的物理高度 Y 为基准
+        function getSurfaceHeight(x) {
+            switch(selectedSample) {
+                case 'graphite':
+                    // 模拟石墨蜂窝晶格原子堆叠
+                    return 85 + 15 * Math.sin(x / 14) * Math.cos(x / 25) + 6 * Math.sin(x / 6);
+                case 'step':
+                    // 完美的阶跃台阶，经过双曲正切函数平滑化，模拟真实原子过渡
+                    return 110 - 45 * Math.tanh((x - 300) / 18);
+                case 'adatom':
+                    // 单个超大吸附原子
+                    return 80 + 40 * Math.exp(-Math.pow((x - 300) / 40, 2)) + 4 * Math.sin(x/8);
+                default:
+                    return 80;
             }
-            return m * Math.pow(10, e);
         }
 
-        function formatErDimensionless(x) {
-            if (!isFinite(x) || x <= 0) return '—';
-            const exp = Math.floor(Math.log10(x));
-            const dec = Math.max(0, -exp);
-            let s = x.toFixed(dec);
-            if (s.indexOf('.') >= 0) s = s.replace(/\.?0+$/, '');
-            return s;
+        // ----------------- 初始化波形与状态 -----------------
+        function initDimensions() {
+            const container = document.getElementById('canvas-container');
+            canvasMain.width = container.clientWidth * window.devicePixelRatio;
+            canvasMain.height = 320 * window.devicePixelRatio;
+            canvasMain.style.width = container.clientWidth + 'px';
+            canvasMain.style.height = '320px';
+            ctxMain.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            canvasOsc.width = canvasOsc.parentElement.clientWidth * window.devicePixelRatio;
+            canvasOsc.height = 120 * window.devicePixelRatio;
+            canvasOsc.style.width = canvasOsc.parentElement.clientWidth + 'px';
+            canvasOsc.style.height = '120px';
+            ctxOsc.scale(window.devicePixelRatio, window.devicePixelRatio);
+            
+            // 重置探针起始位置
+            state.probeX = 40;
+            state.probeY = getSurfaceHeight(state.probeX) + 25; // 加上一个初始间隙
+            state.probeTargetY = state.probeY;
+            state.history = [];
         }
 
-        /** E_r 最终结果：百分数、1 位有效数字、只进不舍（如 0.034→4%） */
-        function formatErFinAsPercent(erFin) {
-            if (!isFinite(erFin) || erFin <= 0) return '—';
-            const pct = ceilErOneSignificantDigit(erFin * 100);
-            return formatErDimensionless(pct) + '%';
+        // ----------------- 量子隧穿核心物理公式求解 -----------------
+        function calculateTunnelCurrent(gapDistance, phi, biasVoltage) {
+            if (gapDistance <= 0.1) return 999.0; // 物理碰撞发生
+            
+            // 考虑真实的量子阻抗与简化的常数项
+            // \kappa = \sqrt{2m(\Phi)} / \hbar
+            // 为了让数值更适合可视化，这里采用缩放因数以实现：
+            // 在 3-5 埃之间产生 0 - 5 nA 的隧穿电流
+            const phiJoules = phi * PHYSICS.e;
+            const kappa = Math.sqrt(2 * PHYSICS.m * phiJoules) / PHYSICS.hbar; // 约等于 1.0e10 m^-1 (即 1.0 / Å)
+            
+            const dAngstrom = gapDistance; // gap距离以 埃(Å) 为单位
+            
+            // 指数衰减方程 I = C * V * e^(-2 * \kappa * d)
+            // 当 d = 3.0 Å, phi = 4.5eV, V = 1.5V 时，设定其电流约为 2.0 nA
+            // 物理常量配合因子：
+            const kVal = 1.025 * Math.sqrt(phi); // 1.025 是将物理单位常数整合后的系数 (1/Å)
+            const tunnelingProbability = Math.exp(-2 * kVal * dAngstrom);
+            
+            const conductanceCoeff = 1800.0; // 调和比例因子
+            const current = biasVoltage * conductanceCoeff * tunnelingProbability;
+            
+            return Math.max(0, current);
         }
 
-        function formatErRawDisplay(x) {
-            if (!isFinite(x) || x <= 0) return '—';
-            let s = x.toFixed(5);
-            if (s.indexOf('.') >= 0) s = s.replace(/\.?0+$/, '');
-            return s;
-        }
-
-        /** Ē 与 ΔE（已按 1 位有效数字只进不舍）同 10^exp 尾数、小数位对齐 */
-        function alignedEMantissas(Ebar, deltaEDisp) {
-            if (!isFinite(Ebar) || !isFinite(deltaEDisp) || Ebar === 0 || deltaEDisp <= 0) return null;
-            const exp = Math.floor(Math.log10(Math.abs(Ebar)));
-            const manE = Ebar / Math.pow(10, exp);
-            const manU = deltaEDisp / Math.pow(10, exp);
-            const dec = Math.max(0, -Math.floor(Math.log10(manU)));
-            const r = Math.pow(10, dec);
-            const manER = Math.round(manE * r) / r;
-            const sE = manER.toFixed(dec);
-            const sU = manU.toFixed(dec);
-            const w = Math.max(sE.length, sU.length);
-            return { sE, sU, w, exp };
-        }
-
-        /** E = Ē ± ΔE（HTML，等宽小数位），单位 N/㎡ */
-        function formatBoldEplusMinus(Ebar, deltaEDisp) {
-            const a = alignedEMantissas(Ebar, deltaEDisp);
-            if (!a) return '<span class="b">E</span> = —';
-            const { sE, sU, w, exp } = a;
-            return '<span class="b">E</span> = (' + sE.padStart(w, ' ') + ' ± ' + sU.padStart(w, ' ') + ') × 10<sup>' + exp + '</sup> N/㎡';
-        }
-
-        function grubbsRemoveOne(Es, rule) {
-            const n = Es.length;
-            if (n < 3) return { list: Es.slice(), removed: null, reason: null };
-            const m = mean(Es);
-            const s = stdSample(Es);
-            if (s === 0 || !isFinite(s)) return { list: Es.slice(), removed: null, reason: null };
-            let idx = 0;
-            let maxG = -1;
-            for (let i = 0; i < n; i++) {
-                const G = Math.abs(Es[i] - m) / s;
-                if (G > maxG) { maxG = G; idx = i; }
+        // ----------------- PID反馈控制算法及探针运动 -----------------
+        let lastTime = performance.now();
+        
+        // 电子微粒系统模拟
+        let particles = [];
+        function createTunnelingParticles(sourceX, sourceY, targetY, current, biasVoltage) {
+            // 根据电流大小决定粒子生成几率
+            const rate = Math.min(20, Math.floor(current * 4));
+            if (Math.random() < rate / 60) {
+                particles.push({
+                    x: sourceX + (Math.random() - 0.5) * 4,
+                    y: biasVoltage > 0 ? targetY : sourceY,
+                    targetY: biasVoltage > 0 ? sourceY : targetY,
+                    speed: 2 + Math.random() * 4,
+                    size: 1 + Math.random() * 2
+                });
             }
-            if (rule === '3sigma') {
-                if (maxG <= 3) return { list: Es.slice(), removed: null, reason: null };
-            } else {
-                if (maxG <= grubbsCrit(n)) return { list: Es.slice(), removed: null, reason: null };
+        }
+
+        function updatePhysics() {
+            if (state.isCrashed) return;
+
+            const now = performance.now();
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            // 1. 获取当前探针下方样品的表面高度
+            const surfaceY = getSurfaceHeight(state.probeX);
+            
+            // 实际物理间距（以像素标定单位：30像素 = 1纳米 = 10埃）
+            const pxToAngstrom = 10.0 / 30.0; 
+            const realGapDistance = Math.max(0, (state.probeY - surfaceY) * pxToAngstrom);
+            state.currentRealGap = realGapDistance;
+
+            // 2. 发生物理碰撞判断
+            if (realGapDistance <= 0.3) {
+                triggerCrash();
+                return;
             }
-            const removed = Es[idx];
-            const list = Es.filter((_, i) => i !== idx);
-            const crit = rule === '3sigma' ? '3σ' : '格拉布斯 G₀.₀₅(' + n + ')=' + grubbsCrit(n).toFixed(3);
-            return { list, removed, reason: '剔除可疑值 E=' + removed.toExponential(4) + ' Pa（' + crit + '，Gmax=' + maxG.toFixed(3) + '）' };
-        }
 
-        function grubbsLoop(Es, rule, log) {
-            let list = Es.slice();
-            while (list.length >= 3) {
-                const r = grubbsRemoveOne(list, rule);
-                if (!r.removed) break;
-                log.push(r.reason);
-                list = r.list;
+            // 3. 计算即时隧穿电流
+            state.current = calculateTunnelCurrent(realGapDistance, state.phi, state.voltage);
+
+            // 4. 反馈环路控制 (PID)
+            if (mode === 'CC') {
+                // 恒流模式：在对数空间中做PI反馈，极其平稳安全
+                const currentError = Math.log(state.current + 0.001) - Math.log(state.setpointCurrent + 0.001);
+                
+                // 计算反馈移动速度
+                // 误差大则动作快，乘上灵敏度 Kp
+                const dy = currentError * state.kp * 22;
+                
+                // 调整探针目标位置 Y
+                state.probeTargetY = state.probeY + dy;
+                // 限制探针安全极限高度（避免飞出顶部）
+                state.probeTargetY = Math.min(270, Math.max(surfaceY, state.probeTargetY));
+                
+                // 平滑推进
+                state.probeY += (state.probeTargetY - state.probeY) * 0.4;
+            } else if (mode === 'CH') {
+                // 恒高模式：探针被锁定于恒定平均高度
+                const targetHeight = 155; 
+                state.probeY += (targetHeight - state.probeY) * 0.1;
+            } else if (mode === 'MANUAL') {
+                // 手动模式：完全关闭高度反馈
+                // 用户高度通过交互控制器实现
             }
-            return list;
-        }
 
-        const overlay = document.getElementById('procOverlay');
-        const procOpenBtn = document.getElementById('procOpenBtn');
-        const procCloseBtn = document.getElementById('procCloseBtn');
-        const procReadBody = document.getElementById('procReadBody');
-        const procResult = document.getElementById('procResult');
+            // 5. 扫描步进（横向移动）
+            if (isRunning && mode !== 'MANUAL') {
+                const step = state.scanSpeed * state.scanDir * (60 * dt);
+                state.probeX += step;
+                
+                // 边界折返
+                if (state.probeX >= canvasMain.width / window.devicePixelRatio - 40) {
+                    state.probeX = canvasMain.width / window.devicePixelRatio - 40;
+                    state.scanDir = -1;
+                } else if (state.probeX <= 40) {
+                    state.probeX = 40;
+                    state.scanDir = 1;
+                }
+            }
 
-        function defaultRows() {
-            const masses = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(m => (m * 1).toFixed(2));
-            const baseN = 0;
-            return masses.map((mass, i) => ({
-                m: mass,
-                up: (baseN + i * 0.37 + 0.01).toFixed(2),
-                dn: (baseN + i * 0.37).toFixed(2),
-            }));
-        }
+            // 6. 产生电子微粒
+            createTunnelingParticles(state.probeX, state.probeY, surfaceY, state.current, state.voltage);
 
-        function buildRows(data) {
-            procReadBody.innerHTML = '';
-            const rows = data && data.length ? data : defaultRows();
-            rows.forEach((r, i) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML =
-                    '<td>' + (i + 1) + '</td>' +
-                    '<td><input type="text" class="p-m" value="' + (r.m ?? '') + '"></td>' +
-                    '<td><input type="text" class="p-up" value="' + (r.up ?? '') + '"></td>' +
-                    '<td><input type="text" class="p-dn" value="' + (r.dn ?? r.down ?? '') + '"></td>' +
-                    '<td class="p-nbar">—</td>' +
-                    '<td class="p-dnlt">—</td>' +
-                    '<td class="p-ei">—</td>';
-                procReadBody.appendChild(tr);
+            // 更新粒子物理位置
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                if (state.voltage > 0) {
+                    p.y -= p.speed;
+                    if (p.y <= p.targetY) particles.splice(i, 1);
+                } else {
+                    p.y += p.speed;
+                    if (p.y >= p.targetY) particles.splice(i, 1);
+                }
+            }
+
+            // 7. 写入示波器历史队列
+            state.history.push({
+                x: state.probeX,
+                probeZ: state.probeY,
+                surfaceZ: surfaceY,
+                current: state.current
             });
+            if (state.history.length > 350) {
+                state.history.shift();
+            }
         }
 
-        function readRowsFromDom() {
-            const out = [];
-            procReadBody.querySelectorAll('tr').forEach(tr => {
-                const m = tr.querySelector('.p-m')?.value.trim() ?? '';
-                const up = tr.querySelector('.p-up')?.value.trim() ?? '';
-                const dn = tr.querySelector('.p-dn')?.value.trim() ?? '';
-                out.push({ m, up, dn });
-            });
-            return out;
-        }
+        // ----------------- 交互机制 (鼠标拖动) -----------------
+        let isDraggingProbe = false;
+        let dragOffset = { y: 0 };
 
-        function saveLS() {
-            try {
-                const payload = {
-                    L123: document.getElementById('pL123').value,
-                    D123: document.getElementById('pD123').value,
-                    b123: document.getElementById('pb123').value,
-                    dList: document.getElementById('pdList').value,
-                    DL: document.getElementById('pDL').value,
-                    DD: document.getElementById('pDD').value,
-                    Db: document.getElementById('pDb').value,
-                    Dd: document.getElementById('pDd').value,
-                    Dn: document.getElementById('pDn').value,
-                    rule: document.getElementById('pOutRule').value,
-                    rows: readRowsFromDom(),
+        function initInteractions() {
+            // 鼠标与触摸在Canvas上的交互
+            function getEventCoords(e) {
+                const rect = canvasMain.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: clientX - rect.left,
+                    y: 320 - (clientY - rect.top) // 物理坐标0在底部
                 };
-                localStorage.setItem(LS_KEY, JSON.stringify(payload));
-            } catch (e) { /* ignore */ }
-        }
-
-        function loadLS() {
-            try {
-                const raw = localStorage.getItem(LS_KEY);
-                if (!raw) { buildRows(); return; }
-                const o = JSON.parse(raw);
-                if (o.L123) document.getElementById('pL123').value = o.L123;
-                if (o.D123) document.getElementById('pD123').value = o.D123;
-                if (o.b123) document.getElementById('pb123').value = o.b123;
-                if (o.dList) document.getElementById('pdList').value = o.dList;
-                if (o.DL != null) document.getElementById('pDL').value = o.DL;
-                if (o.DD != null) document.getElementById('pDD').value = o.DD;
-                if (o.Db != null) document.getElementById('pDb').value = o.Db;
-                if (o.Dd != null) document.getElementById('pDd').value = o.Dd;
-                if (o.Dn != null) document.getElementById('pDn').value = o.Dn;
-                if (o.rule) document.getElementById('pOutRule').value = o.rule;
-                buildRows(o.rows);
-            } catch (e) {
-                buildRows();
-            }
-        }
-
-        procOpenBtn.addEventListener('click', () => {
-            overlay.classList.add('open');
-            overlay.setAttribute('aria-hidden', 'false');
-        });
-        procCloseBtn.addEventListener('click', () => {
-            overlay.classList.remove('open');
-            overlay.setAttribute('aria-hidden', 'true');
-            saveLS();
-        });
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                overlay.classList.remove('open');
-                saveLS();
-            }
-        });
-
-        document.getElementById('procAddRow').addEventListener('click', () => {
-            const tr = document.createElement('tr');
-            const n = procReadBody.querySelectorAll('tr').length + 1;
-            tr.innerHTML =
-                '<td>' + n + '</td>' +
-                '<td><input type="text" class="p-m" value=""></td>' +
-                '<td><input type="text" class="p-up" value=""></td>' +
-                '<td><input type="text" class="p-dn" value=""></td>' +
-                '<td class="p-nbar">—</td>' +
-                '<td class="p-dnlt">—</td>' +
-                '<td class="p-ei">—</td>';
-            procReadBody.appendChild(tr);
-            renumberRows();
-            saveLS();
-            runCalc();
-        });
-        document.getElementById('procDelRow').addEventListener('click', () => {
-            const trs = procReadBody.querySelectorAll('tr');
-            if (trs.length > 2) {
-                trs[trs.length - 1].remove();
-                renumberRows();
-                saveLS();
-                runCalc();
-            }
-        });
-
-        function renumberRows() {
-            procReadBody.querySelectorAll('tr').forEach((tr, i) => {
-                tr.querySelector('td').textContent = String(i + 1);
-            });
-        }
-
-        document.getElementById('procFillDemo').addEventListener('click', () => {
-            const P = window.__YOUNG_DEMO_PHYS__;
-            if (!P) {
-                alert('3D 场景尚未初始化，请稍后重试。');
-                return;
-            }
-            const mm1 = (x) => (x * 1000).toFixed(1);
-            document.getElementById('pL123').value = [mm1(P.L), mm1(P.L), mm1(P.L)].join(',');
-            document.getElementById('pD123').value = [mm1(P.D), mm1(P.D), mm1(P.D)].join(',');
-            document.getElementById('pb123').value = [P.b_mm, P.b_mm, P.b_mm].map((x) => Number(x).toFixed(1)).join(',');
-            const dmm = P.d_mm;
-            document.getElementById('pdList').value = [dmm, dmm, dmm, dmm, dmm, dmm].map((x) => Number(x).toFixed(3)).join(',');
-            const rows = [];
-            for (let i = 0; i <= 9; i++) {
-                const m = (i * P.massPerWeight).toFixed(2);
-                const n0 = i * 0.37;
-                rows.push({ m, up: (n0 + 0.01).toFixed(2), dn: n0.toFixed(2) });
-            }
-            buildRows(rows);
-            saveLS();
-            runCalc();
-        });
-
-        function gatherValidated() {
-            const Lmm = parseList(document.getElementById('pL123').value);
-            const Dmm = parseList(document.getElementById('pD123').value);
-            const bsMm = parseList(document.getElementById('pb123').value);
-            const dsMm = parseList(document.getElementById('pdList').value);
-            if (Lmm.length !== 3) throw new Error('L 需要恰好 3 个数值（mm）。');
-            if (Dmm.length !== 3) throw new Error('D 需要恰好 3 个数值（mm）。');
-            if (bsMm.length !== 3) throw new Error('b 需要恰好 3 个数值（mm）。');
-            if (dsMm.length < 2) throw new Error('直径 d 至少需要 2 个数值（mm）。');
-
-            const Ls_m = Lmm.map(x => x / 1000);
-            const Ds_m = Dmm.map(x => x / 1000);
-            const L = mean(Ls_m);
-            const D = mean(Ds_m);
-            const b = mean(bsMm.map(x => x / 1000));
-            const d = mean(dsMm.map(x => x / 1000));
-
-            const uLA = uATypeMean(Ls_m);
-            const uDA = uATypeMean(Ds_m);
-            const bM = bsMm.map(x => x / 1000);
-            const uBA = uATypeMean(bM);
-            const dM = dsMm.map(x => x / 1000);
-            const uDA_d = uATypeMean(dM);
-
-            const DL_mm = Number(document.getElementById('pDL').value);
-            const DD_mm = Number(document.getElementById('pDD').value);
-            const Db_mm = Number(document.getElementById('pDb').value);
-            const Dd_mm = Number(document.getElementById('pDd').value);
-            const Dn_cm = Number(document.getElementById('pDn').value);
-            if ([DL_mm, DD_mm, Db_mm, Dd_mm, Dn_cm].some(x => Number.isNaN(x))) throw new Error('B 类分度值含有非法数字。');
-
-            const uLB = uBRect(DL_mm / 1000);
-            const uDB = uBRect(DD_mm / 1000);
-            const uBb = uBRect(Db_mm / 1000);
-            const uBd = uBRect(Dd_mm / 1000);
-            const uBn_read_cm = uBRect(Dn_cm);
-
-            const uL = combineUAUB(uLA, uLB);
-            const uD = combineUAUB(uDA, uDB);
-            const ub = combineUAUB(uBA, uBb);
-            const ud = combineUAUB(uDA_d, uBd);
-
-            const pts = [];
-            procReadBody.querySelectorAll('tr').forEach(tr => {
-                const mv = parseFloat(tr.querySelector('.p-m').value);
-                const up = parseFloat(tr.querySelector('.p-up').value);
-                const dn = parseFloat(tr.querySelector('.p-dn').value);
-                if ([mv, up, dn].every(x => !Number.isNaN(x))) pts.push({ m: mv, up, dn, tr });
-            });
-            if (pts.length < 2) throw new Error('至少需要两行有效的 m、n增、n减。');
-
-            return {
-                L, D, d, b, Lmm, Dmm, Ls_m, Ds_m, bsMm, dsMm,
-                uL, uD, ub, ud,
-                uLA, uDA, uBA, uDA_d,
-                uBn_read_cm,
-                pts,
-            };
-        }
-
-        function stripHtml(s) {
-            return s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-        }
-
-        function runCalc() {
-            let info;
-            try {
-                info = gatherValidated();
-            } catch (err) {
-                procResult.textContent = '输入错误：' + err.message;
-                window.__LAST_PROC_EXPORT__ = null;
-                return;
             }
 
-            const { L, D, d, b, pts: ptsRaw, uL, uD, ub, ud, uBn_read_cm, Lmm, Dmm, bsMm, dsMm } = info;
-            const pts = ptsRaw.slice().sort((a, b) => a.m - b.m);
-            const lines = [];
-            lines.push('── 直接测量量（公式中 L、D、b、d 为 m；此处同步显示 mm）──');
-            lines.push('L̄ = ' + mean(Lmm).toFixed(1) + ' mm，u(L) = ' + (uL * 1000).toFixed(4) + ' mm');
-            lines.push('D̄ = ' + mean(Dmm).toFixed(1) + ' mm，u(D) = ' + (uD * 1000).toFixed(4) + ' mm');
-            lines.push('b̄ = ' + mean(bsMm).toFixed(1) + ' mm，u(b) = ' + (ub * 1000).toFixed(4) + ' mm');
-            lines.push('d̄ = ' + mean(dsMm).toFixed(3) + ' mm，u(d) = ' + (ud * 1000).toFixed(4) + ' mm');
-            lines.push('');
-
-            const nBars = [];
-            const seg = [];
-            for (let i = 0; i < pts.length; i++) {
-                const p = pts[i];
-                const nbar = (p.up + p.dn) / 2;
-                nBars.push(nbar);
-                p.tr.querySelector('.p-nbar').textContent = nbar.toFixed(2);
-            }
-            for (let i = 0; i < pts.length; i++) {
-                const tr = pts[i].tr;
-                tr.querySelector('.p-dnlt').textContent = '—';
-                tr.querySelector('.p-ei').textContent = '—';
-            }
-
-            for (let i = 0; i < pts.length - 1; i++) {
-                const dm = pts[i + 1].m - pts[i].m;
-                const dnmCm = nBars[i + 1] - nBars[i];
-                const dnm = dnmCm / 100;
-                if (dm <= 0 || dnm === 0) {
-                    lines.push('警告：第 ' + (i + 1) + ' 段 Δm≤0 或 Δn=0，已跳过。');
-                    continue;
+            canvasMain.addEventListener('mousedown', (e) => {
+                if (mode !== 'MANUAL' || state.isCrashed) return;
+                const coords = getEventCoords(e);
+                
+                // 检测是否点击在探针尖端附近
+                const distToTip = Math.hypot(coords.x - state.probeX, coords.y - state.probeY);
+                if (distToTip < 30) {
+                    isDraggingProbe = true;
+                    dragOffset.y = coords.y - state.probeY;
                 }
-                if (Math.abs(dm - 1) > 1e-4) {
-                    lines.push('注意：第 ' + (i + 1) + ' 段 Δm=' + dm.toFixed(3) + ' kg（公式中 F 仍固定为 ' + F_FIXED + ' N）。');
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDraggingProbe || state.isCrashed) return;
+                const coords = getEventCoords(e);
+                
+                // 手动调节探针高度及X轴
+                state.probeY = Math.min(270, Math.max(20, coords.y - dragOffset.y));
+                state.probeX = Math.min(canvasMain.width / window.devicePixelRatio - 40, Math.max(40, coords.x));
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDraggingProbe = false;
+            });
+
+            // 触摸支持
+            canvasMain.addEventListener('touchstart', (e) => {
+                if (mode !== 'MANUAL' || state.isCrashed) return;
+                const coords = getEventCoords(e);
+                const distToTip = Math.hypot(coords.x - state.probeX, coords.y - state.probeY);
+                if (distToTip < 40) {
+                    isDraggingProbe = true;
+                    dragOffset.y = coords.y - state.probeY;
+                    e.preventDefault();
                 }
-                const Ei = youngE(L, D, d, b, dnm);
-                seg.push({ i, dm, dnmCm, dnm, Ei });
-                pts[i + 1].tr.querySelector('.p-dnlt').textContent = dnmCm.toFixed(2);
-                pts[i + 1].tr.querySelector('.p-ei').textContent = Ei.toExponential(4);
-            }
-
-            const Es = seg.map(s => s.Ei);
-            if (!Es.length) {
-                procResult.textContent = lines.join('\n') + '\n无法计算 E：请检查质量递增与读数。';
-                window.__LAST_PROC_EXPORT__ = null;
-                return;
-            }
-
-            const rule = document.getElementById('pOutRule').value;
-            const grubLog = [];
-            const EsF = grubbsLoop(Es, rule, grubLog);
-            const Ebar = mean(EsF);
-
-            const dnM = seg.map(s => Math.abs(s.dnm));
-            const delN_mean_m = mean(dnM);
-            if (!isFinite(delN_mean_m) || delN_mean_m <= 0) {
-                procResult.textContent = lines.join('\n') + '\nΔn̄ 均值无效，无法计算相对不确定度。';
-                window.__LAST_PROC_EXPORT__ = null;
-                return;
-            }
-            const uSeg_m = uBn_read_cm / 100;
-            let uDelA_m = 0;
-            if (dnM.length >= 2) uDelA_m = stdSample(dnM) / Math.sqrt(dnM.length);
-            const uDelN_m = Math.sqrt(uDelA_m * uDelA_m + uSeg_m * uSeg_m);
-
-            const Er_raw = (uL / L) + (uD / D) + (ub / b) + (2 * ud / d) + (uDelN_m / delN_mean_m);
-            const Er_fin = ceilErOneSignificantDigit(Er_raw);
-            const deltaE = Math.abs(Ebar) * Er_fin;
-            const deltaEDisp = ceilErOneSignificantDigit(deltaE);
-
-            lines.push('── 各段 Δn（cm）与 Eᵢ（F = ' + F_FIXED + ' N）──');
-            seg.forEach((s, j) => {
-                lines.push('段' + (j + 1) + ': Δn̄=' + s.dnmCm.toFixed(2) + ' cm → E' + (j + 1) + '=' + s.Ei.toExponential(4) + ' Pa');
             });
-            lines.push('');
-            if (grubLog.length) {
-                lines.push('── 粗大误差处理 ──');
-                grubLog.forEach(t => lines.push(t));
-                lines.push('剔除后参与平均的个数 k = ' + EsF.length);
-            } else lines.push('── 粗大误差：未触发剔除（或样本不足 3）──');
-            lines.push('');
-            lines.push('── 相对不确定度（求和后 E_r：1 位有效数字，只进不舍）──');
-            lines.push('E_r(计算值) = ' + formatErRawDisplay(Er_raw) + '，E_r(结果，1 位有效数字·只进不舍) = ' + formatErFinAsPercent(Er_fin) + '；ΔE = E_r·Ē');
-            const aSum = alignedEMantissas(Ebar, deltaEDisp);
-            if (aSum) {
-                lines.push('Ē = (' + aSum.sE + ') × 10^' + aSum.exp + ' N/㎡，ΔE = (' + aSum.sU + ') × 10^' + aSum.exp + ' N/㎡');
-            } else {
-                lines.push('Ē = —，ΔE = —');
+
+            canvasMain.addEventListener('touchmove', (e) => {
+                if (!isDraggingProbe || state.isCrashed) return;
+                const coords = getEventCoords(e);
+                state.probeY = Math.min(270, Math.max(20, coords.y - dragOffset.y));
+                state.probeX = Math.min(canvasMain.width / window.devicePixelRatio - 40, Math.max(40, coords.x));
+                e.preventDefault();
+            });
+
+            canvasMain.addEventListener('touchend', () => {
+                isDraggingProbe = false;
+            });
+        }
+
+        // ----------------- 碰撞警报 -----------------
+        function triggerCrash() {
+            state.isCrashed = true;
+            state.current = 999.0;
+            // 改变视觉样式
+            crashOverlay.style.opacity = '1';
+            crashOverlay.style.pointerEvents = 'auto';
+            
+            // 播放低沉警报声
+            playCrashBeep();
+        }
+
+        function playCrashBeep() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(120, audioCtx.currentTime); // 低沉轰鸣
+                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.8);
+                
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.8);
+            } catch(e) {}
+        }
+
+        // ----------------- 绘制主仿真视窗 (Main Canvas) -----------------
+        function drawMainCanvas() {
+            const width = canvasMain.width / window.devicePixelRatio;
+            const height = canvasMain.height / window.devicePixelRatio;
+            
+            ctxMain.clearRect(0, 0, width, height);
+
+            // 绘制精美的电子实验室科技感背景
+            ctxMain.fillStyle = '#060913';
+            ctxMain.fillRect(0, 0, width, height);
+            
+            // 绘制网格
+            ctxMain.strokeStyle = 'rgba(31, 41, 55, 0.4)';
+            ctxMain.lineWidth = 1;
+            for (let x = 0; x < width; x += 40) {
+                ctxMain.beginPath();
+                ctxMain.moveTo(x, 0);
+                ctxMain.lineTo(x, height);
+                ctxMain.stroke();
             }
-            lines.push('');
+            for (let y = 0; y < height; y += 40) {
+                ctxMain.beginPath();
+                ctxMain.moveTo(0, y);
+                ctxMain.lineTo(width, y);
+                ctxMain.stroke();
+            }
 
-            const htmlFinal = formatBoldEplusMinus(Ebar, deltaEDisp);
-            procResult.innerHTML =
-                lines.map(l => escapeHtml(l)).join('\n') +
-                '<div class="final-math">' + htmlFinal + '</div>';
+            // 绘制量子波函数交叠场 (Wavefunction Overlap Field)
+            // 当探针与样品距离逼近时，渲染发光的交界区域
+            const surfaceY = getSurfaceHeight(state.probeX);
+            const gap = state.probeY - surfaceY;
+            if (gap < 80 && !state.isCrashed) {
+                const intensity = Math.min(0.8, Math.exp(-gap / 15) * (state.voltage / 1.5));
+                const gradient = ctxMain.createRadialGradient(
+                    state.probeX, height - state.probeY, 2, 
+                    state.probeX, height - state.probeY, gap + 15
+                );
+                gradient.addColorStop(0, `rgba(6, 182, 212, ${intensity * 0.9})`);
+                gradient.addColorStop(0.3, `rgba(16, 185, 129, ${intensity * 0.5})`);
+                gradient.addColorStop(1, 'rgba(6, 182, 212, 0)');
+                
+                ctxMain.fillStyle = gradient;
+                ctxMain.beginPath();
+                ctxMain.arc(state.probeX, height - state.probeY, gap + 15, 0, Math.PI * 2);
+                ctxMain.fill();
+            }
 
-            window.__LAST_PROC_EXPORT__ = {
-                lines: lines.concat([stripHtml(htmlFinal)]),
-                csvTable: buildCsvTable(pts, nBars, seg, Es, EsF, Ebar, deltaE, Er_fin, grubLog, info),
+            // 绘制样品原子排布 (Sample Atoms)
+            // 用一连串半圆或圆表达样品表面的晶格结构
+            const atomRadius = 18;
+            ctxMain.fillStyle = '#1e293b';
+            
+            // 主体金属阴影渐变
+            const sampleGrad = ctxMain.createLinearGradient(0, height - 80, 0, height);
+            sampleGrad.addColorStop(0, '#0f172a');
+            sampleGrad.addColorStop(0.4, '#1e293b');
+            sampleGrad.addColorStop(1, '#020617');
+            ctxMain.fillStyle = sampleGrad;
+
+            // 绘制连绵起伏的原子底层
+            ctxMain.beginPath();
+            ctxMain.moveTo(0, height);
+            for (let x = 0; x <= width; x += 3) {
+                const sy = getSurfaceHeight(x);
+                ctxMain.lineTo(x, height - sy);
+            }
+            ctxMain.lineTo(width, height);
+            ctxMain.closePath();
+            ctxMain.fill();
+
+            // 绘制原子表面球冠的高发光，突显三维立体感
+            ctxMain.lineWidth = 1.5;
+            for (let x = 15; x < width + 20; x += 22) {
+                const sy = getSurfaceHeight(x);
+                // 给原子边缘绘制明亮弧度，模拟电子云轮廓
+                const gradAtom = ctxMain.createRadialGradient(x, height - sy + 8, 2, x, height - sy, 18);
+                gradAtom.addColorStop(0, '#1e3a8a');
+                gradAtom.addColorStop(0.5, '#0f172a');
+                gradAtom.addColorStop(1, 'transparent');
+                
+                ctxMain.fillStyle = gradAtom;
+                ctxMain.beginPath();
+                ctxMain.arc(x, height - sy + 5, 18, 0, Math.PI * 2);
+                ctxMain.fill();
+
+                // 绘制电子云边界
+                ctxMain.strokeStyle = 'rgba(71, 85, 105, 0.35)';
+                ctxMain.beginPath();
+                ctxMain.arc(x, height - sy + 5, 18, Math.PI, 2 * Math.PI);
+                ctxMain.stroke();
+            }
+
+            // 绘制隧穿量子微粒 (Tunneling Electrons)
+            ctxMain.fillStyle = '#22d3ee';
+            ctxMain.shadowBlur = 10;
+            ctxMain.shadowColor = '#06b6d4';
+            for (let p of particles) {
+                ctxMain.beginPath();
+                ctxMain.arc(p.x, height - p.y, p.size, 0, Math.PI * 2);
+                ctxMain.fill();
+            }
+            ctxMain.shadowBlur = 0; // 重置阴影
+
+            // 绘制探针主体与悬臂梁 (Cantilever & Probe Base)
+            const pX = state.probeX;
+            const pY = height - state.probeY;
+
+            // 1. 压电控制调节杆（黄/灰相间高科技伸缩臂，象征压电陶瓷 Piezo Tube）
+            ctxMain.strokeStyle = '#334155';
+            ctxMain.lineWidth = 14;
+            ctxMain.lineCap = 'butt';
+            ctxMain.beginPath();
+            ctxMain.moveTo(pX, 0);
+            ctxMain.lineTo(pX, pY - 55);
+            ctxMain.stroke();
+
+            // 压电滑梁标志环（用来在手动模式提供拖动指示）
+            ctxMain.fillStyle = mode === 'MANUAL' ? '#eab308' : '#475569';
+            ctxMain.fillRect(pX - 10, pY - 80, 20, 10);
+            ctxMain.strokeStyle = '#000';
+            ctxMain.lineWidth = 1;
+            ctxMain.strokeRect(pX - 10, pY - 80, 20, 10);
+
+            if (mode === 'MANUAL') {
+                // 手动模式下闪烁黄光提示
+                ctxMain.fillStyle = '#eab308';
+                ctxMain.beginPath();
+                ctxMain.arc(pX, pY - 75, 4 + Math.sin(Date.now() / 100) * 1.5, 0, Math.PI * 2);
+                ctxMain.fill();
+            }
+
+            // 2. 针座
+            ctxMain.fillStyle = '#64748b';
+            ctxMain.strokeStyle = '#475569';
+            ctxMain.lineWidth = 2;
+            ctxMain.beginPath();
+            ctxMain.moveTo(pX - 25, pY - 55);
+            ctxMain.lineTo(pX + 25, pY - 55);
+            ctxMain.lineTo(pX + 12, pY - 30);
+            ctxMain.lineTo(pX - 12, pY - 30);
+            ctxMain.closePath();
+            ctxMain.fill();
+            ctxMain.stroke();
+
+            // 3. 针尖（渐尖三角形，直至最后一个核心单原子）
+            const needleGrad = ctxMain.createLinearGradient(pX - 12, pY - 30, pX + 12, pY - 6);
+            needleGrad.addColorStop(0, '#94a3b8');
+            needleGrad.addColorStop(1, '#f1f5f9');
+            
+            ctxMain.fillStyle = needleGrad;
+            ctxMain.beginPath();
+            ctxMain.moveTo(pX - 12, pY - 30);
+            ctxMain.lineTo(pX + 12, pY - 30);
+            ctxMain.lineTo(pX, pY - 6);
+            ctxMain.closePath();
+            ctxMain.fill();
+
+            // 4. 探针单顶端原子 (Apex Atom) - 量子极限所在
+            // 发出明亮电晕，表示场发射极点
+            ctxMain.fillStyle = '#38bdf8';
+            ctxMain.beginPath();
+            ctxMain.arc(pX, pY - 4, 4, 0, Math.PI * 2);
+            ctxMain.fill();
+
+            // 探针尖端原子外层包覆发光圈
+            ctxMain.shadowBlur = 8;
+            ctxMain.shadowColor = '#38bdf8';
+            ctxMain.strokeStyle = '#ffffff';
+            ctxMain.lineWidth = 1.5;
+            ctxMain.beginPath();
+            ctxMain.arc(pX, pY - 4, 4.5, 0, Math.PI * 2);
+            ctxMain.stroke();
+            ctxMain.shadowBlur = 0; // 重置
+
+            // 绘制当前测量指示线
+            if (!state.isCrashed) {
+                ctxMain.strokeStyle = 'rgba(6, 182, 212, 0.4)';
+                ctxMain.lineWidth = 1;
+                ctxMain.setLineDash([4, 4]);
+                ctxMain.beginPath();
+                ctxMain.moveTo(pX, pY - 4);
+                ctxMain.lineTo(pX, height - surfaceY);
+                ctxMain.stroke();
+                ctxMain.setLineDash([]);
+                
+                // 标注高度文本
+                ctxMain.fillStyle = '#38bdf8';
+                ctxMain.font = '10px Fira Code';
+                ctxMain.fillText(`d = ${state.currentRealGap.toFixed(2)} Å`, pX + 15, pY + gap/2 + 3);
+            }
+        }
+
+        // ----------------- 绘制模拟电流表盘 (Meter Canvas) -----------------
+        function drawMeter() {
+            const w = canvasMeter.width;
+            const h = canvasMeter.height;
+            ctxMeter.clearRect(0, 0, w, h);
+
+            const cx = w / 2;
+            const cy = h - 15;
+            const r = 65;
+
+            // 1. 绘制半圆形表盘背景与刻度
+            ctxMeter.strokeStyle = '#334155';
+            ctxMeter.lineWidth = 4;
+            ctxMeter.beginPath();
+            ctxMeter.arc(cx, cy, r, Math.PI, 2 * Math.PI);
+            ctxMeter.stroke();
+
+            // 2. 刻度线
+            ctxMeter.strokeStyle = '#475569';
+            ctxMeter.lineWidth = 1.5;
+            for (let a = 0; a <= 10; a++) {
+                const angle = Math.PI + (a / 10) * Math.PI;
+                const startR = r - 6;
+                const endR = r;
+                
+                ctxMeter.beginPath();
+                ctxMeter.moveTo(cx + startR * Math.cos(angle), cy + startR * Math.sin(angle));
+                ctxMeter.lineTo(cx + endR * Math.cos(angle), cy + endR * Math.sin(angle));
+                ctxMeter.stroke();
+            }
+
+            // 绿色/黄色/红色功能区段
+            ctxMeter.strokeStyle = '#10b981'; // 0 - 3 nA 绿色安全
+            ctxMeter.lineWidth = 3;
+            ctxMeter.beginPath();
+            ctxMeter.arc(cx, cy, r - 3, Math.PI, Math.PI + 0.6 * Math.PI);
+            ctxMeter.stroke();
+
+            ctxMeter.strokeStyle = '#f59e0b'; // 3 - 4.5 nA 黄色警告
+            ctxMeter.beginPath();
+            ctxMeter.arc(cx, cy, r - 3, Math.PI + 0.6 * Math.PI, Math.PI + 0.9 * Math.PI);
+            ctxMeter.stroke();
+
+            ctxMeter.strokeStyle = '#f43f5e'; // 4.5 - 5 nA 红色崩溃
+            ctxMeter.beginPath();
+            ctxMeter.arc(cx, cy, r - 3, Math.PI + 0.9 * Math.PI, 2 * Math.PI);
+            ctxMeter.stroke();
+
+            // 3. 计算指针角度
+            // 电流最高模拟 5 nA
+            const maxI = 5.0;
+            const iFraction = Math.min(1.0, state.current / maxI);
+            const pointerAngle = Math.PI + iFraction * Math.PI;
+
+            // 4. 绘制中心转轴
+            ctxMeter.fillStyle = '#475569';
+            ctxMeter.beginPath();
+            ctxMeter.arc(cx, cy, 6, 0, Math.PI * 2);
+            ctxMeter.fill();
+
+            // 5. 绘制指针
+            ctxMeter.strokeStyle = state.isCrashed ? '#f43f5e' : '#22d3ee';
+            ctxMeter.lineWidth = 2.5;
+            ctxMeter.shadowBlur = 4;
+            ctxMeter.shadowColor = ctxMeter.strokeStyle;
+            ctxMeter.beginPath();
+            ctxMeter.moveTo(cx, cy);
+            ctxMeter.lineTo(cx + (r - 10) * Math.cos(pointerAngle), cy + (r - 10) * Math.sin(pointerAngle));
+            ctxMeter.stroke();
+            ctxMeter.shadowBlur = 0; // 重置
+            
+            // 6. 表盘标识文本
+            ctxMeter.fillStyle = '#64748b';
+            ctxMeter.font = '9px Inter';
+            ctxMeter.textAlign = 'center';
+            ctxMeter.fillText('0 nA', cx - r + 10, cy + 12);
+            ctxMeter.fillText('2.5', cx, cy - r - 6);
+            ctxMeter.fillText('5 nA', cx + r - 10, cy + 12);
+        }
+
+        // ----------------- 绘制示波器 (Oscilloscope Canvas) -----------------
+        function drawOscilloscope() {
+            const w = canvasOsc.width / window.devicePixelRatio;
+            const h = canvasOsc.height / window.devicePixelRatio;
+            
+            ctxOsc.clearRect(0, 0, w, h);
+            
+            // 背景
+            ctxOsc.fillStyle = '#060913';
+            ctxOsc.fillRect(0, 0, w, h);
+
+            // 示波器中轴基准线与网格
+            ctxOsc.strokeStyle = 'rgba(31, 41, 55, 0.4)';
+            ctxOsc.lineWidth = 0.5;
+            for (let x = 0; x < w; x += 30) {
+                ctxOsc.beginPath();
+                ctxOsc.moveTo(x, 0);
+                ctxOsc.lineTo(x, h);
+                ctxOsc.stroke();
+            }
+            for (let y = 0; y < h; y += 25) {
+                ctxOsc.beginPath();
+                ctxOsc.moveTo(0, y);
+                ctxOsc.lineTo(w, y);
+                ctxOsc.stroke();
+            }
+
+            if (state.history.length < 2) return;
+
+            // 绘制三条曲线：
+            // 1. 真实形貌曲线 (红虚线)
+            // 2. 探针绝对位置 Z (青实线)
+            // 3. 隧穿电流 I (绿实线)
+
+            const mapX = (histX) => {
+                // 缩放X坐标让其铺满整个示波器宽度
+                const padding = 40;
+                const activeW = w - padding * 2;
+                return padding + ((histX - 40) / (widthLimit - 80)) * activeW;
             };
-            saveLS();
-        }
 
-        function escapeHtml(s) {
-            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
+            const widthLimit = canvasMain.width / window.devicePixelRatio;
 
-        function buildCsvTable(pts, nBars, seg, EsOrig, EsF, Ebar, deltaE, Er_fin, grubLog, info) {
-            const rows = [['次数', 'm_kg', 'n增_cm', 'n减_cm', 'nbar_cm', 'Delta_n_cm', 'Ei_Pa']];
-            const dnByRow = {};
-            const eiByRow = {};
-            seg.forEach((s) => {
-                dnByRow[s.i + 1] = s.dnmCm;
-                eiByRow[s.i + 1] = s.Ei;
-            });
-            pts.forEach((p, idx) => {
-                rows.push([
-                    idx + 1,
-                    p.m,
-                    p.up,
-                    p.dn,
-                    nBars[idx].toFixed(4),
-                    dnByRow[idx] != null ? String(dnByRow[idx]) : '',
-                    eiByRow[idx] != null ? String(eiByRow[idx]) : '',
-                ]);
-            });
-            rows.push([]);
-            rows.push(['L_mean_mm', mean(info.Lmm)]);
-            rows.push(['D_mean_mm', mean(info.Dmm)]);
-            rows.push(['b_mean_mm', mean(info.bsMm)]);
-            rows.push(['d_mean_mm', mean(info.dsMm)]);
-            rows.push(['L_mean_m', info.L]);
-            rows.push(['D_mean_m', info.D]);
-            rows.push(['b_mean_m', info.b]);
-            rows.push(['d_mean_m', info.d]);
-            rows.push(['E_mean_Pa', Ebar]);
-            rows.push(['deltaE_Pa', deltaE]);
-            rows.push(['Er_1sig_ceil', Er_fin]);
-            rows.push(['outlier_log', grubLog.join('; ')]);
-            return rows;
-        }
+            // 通道 1 (探针位置 Z 与 表面形貌) 对应的 Y轴映射
+            // 样品物理高度大多分布在 40 到 150 之间
+            const mapZToOscY = (z) => {
+                const minZ = 40;
+                const maxZ = 200;
+                // 绘制在示波器上半部分
+                return 45 - ((z - minZ) / (maxZ - minZ)) * 30;
+            };
 
-        function downloadText(filename, text, mime) {
-            const blob = new Blob(['\uFEFF' + text], { type: mime || 'text/plain;charset=utf-8' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(a.href);
-        }
+            // 通道 2 (电流 I) 对应的 Y轴映射
+            const mapIToOscY = (curr) => {
+                // 满量程 5 nA，映射到下半部分
+                const maxI = 5.0;
+                const clampI = Math.min(maxI, curr);
+                return h - 10 - (clampI / maxI) * 45;
+            };
 
-        document.getElementById('procCalc').addEventListener('click', runCalc);
-
-        document.getElementById('procExportCsv').addEventListener('click', () => {
-            if (!window.__LAST_PROC_EXPORT__) {
-                alert('请先填写完整数据并等待自动计算成功，或点击「计算」后再导出。');
-                return;
+            // 绘制真实原子形貌虚线
+            ctxOsc.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+            ctxOsc.lineWidth = 1;
+            ctxOsc.setLineDash([2, 3]);
+            ctxOsc.beginPath();
+            ctxOsc.moveTo(mapX(state.history[0].x), mapZToOscY(state.history[0].surfaceZ));
+            for (let i = 1; i < state.history.length; i++) {
+                ctxOsc.lineTo(mapX(state.history[i].x), mapZToOscY(state.history[i].surfaceZ));
             }
-            const t = new Date();
-            const stamp = t.getFullYear() +
-                String(t.getMonth() + 1).padStart(2, '0') +
-                String(t.getDate()).padStart(2, '0') + '_' +
-                String(t.getHours()).padStart(2, '0') +
-                String(t.getMinutes()).padStart(2, '0') +
-                String(t.getSeconds()).padStart(2, '0');
-            const csv = window.__LAST_PROC_EXPORT__.csvTable.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
-            downloadText('杨氏模量数据_' + stamp + '.csv', csv, 'text/csv;charset=utf-8');
-        });
+            ctxOsc.stroke();
+            ctxOsc.setLineDash([]); // 重置
 
-        document.getElementById('procExportTxt').addEventListener('click', () => {
-            if (!window.__LAST_PROC_EXPORT__) {
-                alert('请先填写完整数据并等待自动计算成功，或点击「计算」后再导出。');
-                return;
+            // 绘制探针运动轨迹
+            ctxOsc.strokeStyle = '#22d3ee';
+            ctxOsc.lineWidth = 1.8;
+            ctxOsc.beginPath();
+            ctxOsc.moveTo(mapX(state.history[0].x), mapZToOscY(state.history[0].probeZ));
+            for (let i = 1; i < state.history.length; i++) {
+                ctxOsc.lineTo(mapX(state.history[i].x), mapZToOscY(state.history[i].probeZ));
             }
-            const t = new Date();
-            const stamp = t.getFullYear() +
-                String(t.getMonth() + 1).padStart(2, '0') +
-                String(t.getDate()).padStart(2, '0') + '_' +
-                String(t.getHours()).padStart(2, '0') +
-                String(t.getMinutes()).padStart(2, '0') +
-                String(t.getSeconds()).padStart(2, '0');
-            downloadText('杨氏模量数据_' + stamp + '.txt', window.__LAST_PROC_EXPORT__.lines.join('\r\n'), 'text/plain;charset=utf-8');
-        });
+            ctxOsc.stroke();
 
-        const procPanelEl = document.getElementById('procPanel');
-        function onProcFieldChange() {
-            saveLS();
-            runCalc();
+            // 绘制电流示波曲线
+            ctxOsc.strokeStyle = '#10b981';
+            ctxOsc.lineWidth = 1.8;
+            ctxOsc.beginPath();
+            ctxOsc.moveTo(mapX(state.history[0].x), mapIToOscY(state.history[0].current));
+            for (let i = 1; i < state.history.length; i++) {
+                ctxOsc.lineTo(mapX(state.history[i].x), mapIToOscY(state.history[i].current));
+            }
+            ctxOsc.stroke();
+
+            // 当前扫描指示器探针垂直十字准线
+            const lastIdx = state.history.length - 1;
+            const currentX = mapX(state.history[lastIdx].x);
+            ctxOsc.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+            ctxOsc.lineWidth = 1;
+            ctxOsc.beginPath();
+            ctxOsc.moveTo(currentX, 0);
+            ctxOsc.lineTo(currentX, h);
+            ctxOsc.stroke();
         }
-        procPanelEl.addEventListener('input', onProcFieldChange);
-        procPanelEl.addEventListener('change', onProcFieldChange);
 
-        loadLS();
-        runCalc();
-    })();
+        // ----------------- 控制器数据面板更新 -----------------
+        function updateUIElements() {
+            // 参数文本显示
+            valVoltage.innerText = `${state.voltage.toFixed(2)} V`;
+            valCurrentSet.innerText = `${state.setpointCurrent.toFixed(2)} nA`;
+            valKp.innerText = `${state.kp.toFixed(2)}`;
+            valPhi.innerText = `${state.phi.toFixed(2)} eV`;
+            valSpeed.innerText = `${state.scanSpeed.toFixed(2)} Å/s`;
+
+            // 数字电流表
+            const currentText = state.isCrashed ? "CRASH!" : state.current.toFixed(3);
+            document.getElementById('meter-digital').innerText = currentText;
+            document.getElementById('meter-digital').className = 
+                state.isCrashed ? "text-3xl font-extrabold tracking-tight code-font text-rose-500 animate-pulse" : "text-3xl font-extrabold tracking-tight code-font text-emerald-400";
+
+            // 实时厚度
+            const gapText = state.isCrashed ? "0.00 Å" : `${state.currentRealGap.toFixed(2)} Å`;
+            document.getElementById('val-real-gap').innerText = gapText;
+        }
+
+        // ----------------- 模式切换控制逻辑 -----------------
+        function setMode(newMode) {
+            mode = newMode;
+            
+            // 重置全部样式
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.className = "mode-btn relative text-left p-3.5 rounded-lg border border-slate-800 transition-all duration-200 bg-slate-950/40 hover:bg-slate-950 hover:border-slate-700 text-slate-400";
+                const dot = btn.querySelector('.rounded-full');
+                if (dot) {
+                    dot.className = "w-3.5 h-3.5 rounded-full border border-slate-700";
+                    dot.innerHTML = "";
+                }
+            });
+
+            // 激活特定样式
+            let activeBtn, color;
+            if (mode === 'CC') {
+                activeBtn = document.getElementById('mode-cc');
+                color = 'emerald';
+                containerSetpoint.style.opacity = '1';
+                containerSetpoint.style.pointerEvents = 'auto';
+                containerFeedback.style.opacity = '1';
+                containerFeedback.style.pointerEvents = 'auto';
+                containerSpeed.style.opacity = '1';
+                containerSpeed.style.pointerEvents = 'auto';
+                manualToast.style.opacity = '0';
+            } else if (mode === 'CH') {
+                activeBtn = document.getElementById('mode-ch');
+                color = 'cyan';
+                containerSetpoint.style.opacity = '0.3';
+                containerSetpoint.style.pointerEvents = 'none';
+                containerFeedback.style.opacity = '0.3';
+                containerFeedback.style.pointerEvents = 'none';
+                containerSpeed.style.opacity = '1';
+                containerSpeed.style.pointerEvents = 'auto';
+                manualToast.style.opacity = '0';
+            } else if (mode === 'MANUAL') {
+                activeBtn = document.getElementById('mode-manual');
+                color = 'warning';
+                containerSetpoint.style.opacity = '0.3';
+                containerSetpoint.style.pointerEvents = 'none';
+                containerFeedback.style.opacity = '0.3';
+                containerFeedback.style.pointerEvents = 'none';
+                containerSpeed.style.opacity = '0.3';
+                containerSpeed.style.pointerEvents = 'none';
+                manualToast.style.opacity = '1';
+            }
+
+            if (activeBtn) {
+                if (color === 'emerald') {
+                    activeBtn.className = "mode-btn relative text-left p-3.5 rounded-lg border-2 transition-all duration-200 bg-slate-950 border-emerald-500/50 hover:border-emerald-500 text-slate-200";
+                    activeBtn.querySelector('.rounded-full').className = "w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center";
+                    activeBtn.querySelector('.rounded-full').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-white"></span>';
+                } else if (color === 'cyan') {
+                    activeBtn.className = "mode-btn relative text-left p-3.5 rounded-lg border-2 transition-all duration-200 bg-slate-950 border-cyan-500/50 hover:border-cyan-500 text-slate-200";
+                    activeBtn.querySelector('.rounded-full').className = "w-3.5 h-3.5 rounded-full bg-cyan-500 flex items-center justify-center";
+                    activeBtn.querySelector('.rounded-full').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-white"></span>';
+                } else if (color === 'warning') {
+                    activeBtn.className = "mode-btn relative text-left p-3.5 rounded-lg border-2 transition-all duration-200 bg-slate-950 border-amber-500/50 hover:border-amber-500 text-slate-200";
+                    activeBtn.querySelector('.rounded-full').className = "w-3.5 h-3.5 rounded-full bg-amber-500 flex items-center justify-center";
+                    activeBtn.querySelector('.rounded-full').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-white"></span>';
+                }
+            }
+        }
+
+        // 样品切换逻辑
+        function selectSample(sampleId) {
+            selectedSample = sampleId;
+            document.querySelectorAll('.sample-btn').forEach(btn => {
+                btn.className = "sample-btn py-2.5 px-2 rounded-lg border border-slate-800 text-slate-400 bg-slate-950/50 text-xs text-center transition-all hover:border-slate-700 hover:text-slate-300";
+            });
+
+            const activeBtn = document.getElementById(`sample-${sampleId}`);
+            if (sampleId === 'graphite') {
+                activeBtn.className = "sample-btn py-2.5 px-2 rounded-lg border border-emerald-500/40 text-emerald-400 bg-emerald-950/20 text-xs font-semibold text-center transition-all";
+            } else if (sampleId === 'step') {
+                activeBtn.className = "sample-btn py-2.5 px-2 rounded-lg border border-cyan-500/40 text-cyan-400 bg-cyan-950/20 text-xs font-semibold text-center transition-all";
+            } else if (sampleId === 'adatom') {
+                activeBtn.className = "sample-btn py-2.5 px-2 rounded-lg border border-purple-500/40 text-purple-400 bg-purple-950/20 text-xs font-semibold text-center transition-all";
+            }
+
+            // 重设高度，防止在新样品中出现瞬间碰撞
+            state.probeY = getSurfaceHeight(state.probeX) + 25;
+            state.probeTargetY = state.probeY;
+            state.history = [];
+        }
+
+        // 绑定所有事件
+        function bindControls() {
+            // 滑块控制更新
+            paramVoltage.addEventListener('input', (e) => {
+                state.voltage = parseFloat(e.target.value);
+            });
+            paramCurrentSet.addEventListener('input', (e) => {
+                state.setpointCurrent = parseFloat(e.target.value);
+            });
+            paramKp.addEventListener('input', (e) => {
+                state.kp = parseFloat(e.target.value);
+            });
+            paramPhi.addEventListener('input', (e) => {
+                state.phi = parseFloat(e.target.value);
+            });
+            paramSpeed.addEventListener('input', (e) => {
+                state.scanSpeed = parseFloat(e.target.value);
+            });
+
+            // 模式点击
+            document.getElementById('mode-cc').addEventListener('click', () => setMode('CC'));
+            document.getElementById('mode-ch').addEventListener('click', () => setMode('CH'));
+            document.getElementById('mode-manual').addEventListener('click', () => setMode('MANUAL'));
+
+            // 样品点击
+            document.getElementById('sample-graphite').addEventListener('click', () => selectSample('graphite'));
+            document.getElementById('sample-step').addEventListener('click', () => selectSample('step'));
+            document.getElementById('sample-adatom').addEventListener('click', () => selectSample('adatom'));
+
+            // 运行/暂停
+            btnPlay.addEventListener('click', () => {
+                isRunning = !isRunning;
+                if (isRunning) {
+                    btnPlay.innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg><span>暂停扫描</span>`;
+                    btnPlay.className = "flex-1 py-3 px-4 rounded-lg font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-md transition-all duration-150 flex items-center justify-center gap-2";
+                } else {
+                    btnPlay.innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>开始扫描</span>`;
+                    btnPlay.className = "flex-1 py-3 px-4 rounded-lg font-bold text-sm bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 shadow-md transition-all duration-150 flex items-center justify-center gap-2";
+                }
+            });
+
+            // 复位示波器
+            btnReset.addEventListener('click', () => {
+                state.history = [];
+            });
+
+            // 修复针尖
+            btnRepair.addEventListener('click', () => {
+                state.isCrashed = false;
+                crashOverlay.style.opacity = '0';
+                crashOverlay.style.pointerEvents = 'none';
+                
+                // 将针尖移高到安全区
+                state.probeY = getSurfaceHeight(state.probeX) + 30;
+                state.probeTargetY = state.probeY;
+                state.history = [];
+                state.current = 0;
+            });
+        }
+
+        // ----------------- 主循环循环渲染 -----------------
+        function loop() {
+            updatePhysics();
+            drawMainCanvas();
+            drawMeter();
+            drawOscilloscope();
+            updateUIElements();
+
+            requestAnimationFrame(loop);
+        }
+
+        // ----------------- 引擎入口 -----------------
+        window.onload = function() {
+            initDimensions();
+            bindControls();
+            initInteractions();
+            
+            // 响应视口大小自适应
+            window.addEventListener('resize', () => {
+                initDimensions();
+            });
+
+            // 延时加载公式引擎，确保渲染正常
+            setTimeout(() => {
+                if (typeof renderMathInElement !== 'undefined') {
+                    renderMathInElement(document.body, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true}
+                        ]
+                    });
+                }
+            }, 300);
+
+            // 启动物理主循环
+            lastTime = performance.now();
+            loop();
+        };
     </script>
 </body>
 </html>
